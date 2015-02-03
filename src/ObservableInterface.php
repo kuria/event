@@ -29,7 +29,7 @@ interface ObservableInterface
      * Register listener
      *
      * @param string   $eventName
-     * @param callable $callback
+     * @param callable $callback  callback(EventInterface, ObservableInterface): void
      * @param int      $priority
      * @return static
      */
