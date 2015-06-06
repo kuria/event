@@ -10,25 +10,16 @@ namespace Kuria\Event;
 interface EventSubscriberInterface
 {
     /**
-     * Get map of events the subscriber wants to listen to
+     * Subscribe to the given event emitter
      *
-     * This is called once upon registration.
-     *
-     * Return value format:
-     *
-     * - Event names are used as keys
-     * - An entry can be either a string (method name) or an array consisting
-     *   of method name as the first element and priority as the second
-     *
-     * Example:
-     *
-     *  array(
-     *      'some.event' => 'onSomeEvent',
-     *      'other.event' => array('onOtherEvent', 1),
-     *      'yet.another.event' => array('onYetAnotherEvent', 5),
-     *  )
-     *
-     * @return array
+     * @param EventEmitter $emitter
      */
-    public function getEvents();
+    public function subscribeTo(EventEmitterInterface $emitter);
+
+    /**
+     * Unsubscribe from the given event emitter
+     *
+     * @param EventEmitter $emitter
+     */
+    public function unsubscribeFrom(EventEmitterInterface $emitter);
 }

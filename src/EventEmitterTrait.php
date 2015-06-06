@@ -3,17 +3,20 @@
 namespace Kuria\Event;
 
 /**
- * Event emitter
+ * Event emitter trait
+ *
+ * Implements EventEmitterInterface
+ *
+ * The code here is copy-pasted from EventEmitter
+ * (to maintain compatibility with PHP 5.3)
  *
  * @author ShiraNai7 <shira.cz>
  */
-class EventEmitter implements EventEmitterInterface
+trait EventEmitterTrait
 {
-    /** @var array event => array(listener, priority, [once]) */
     protected $listeners = array();
-    /** @var bool[] event => sorted 1/0 */
     protected $listenerSortState = array();
-    
+
     public function getListenerCount($event = null)
     {
         if (null !== $event) {
@@ -169,11 +172,6 @@ class EventEmitter implements EventEmitterInterface
         return false;
     }
 
-    /**
-     * Sort listeners of given event by priority
-     *
-     * @param string $event
-     */
     protected function sortListeners($event)
     {
         usort($this->listeners[$event], function ($a, $b) {
