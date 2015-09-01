@@ -19,9 +19,15 @@ trait EventEmitterTrait
     private $globalListeners;
     private $globalEntries;
 
-    public function hasAnyListeners()
+    public function hasAnyListeners($event = null)
     {
-        return $this->entries || $this->globalEntries;
+        return
+            $this->globalEntries
+            || (
+                null !== $event
+                    ? isset($this->entries[$event])
+                    : $this->entries
+            );
     }
 
     public function hasListener($event = null)

@@ -10,16 +10,22 @@ namespace Kuria\Event;
 interface EventEmitterInterface
 {
     /**
-     * See if at least any event listener exists (global or event-specific)
+     * See if any listener exists
      *
+     * Shortcut for: $emitter->hasGlobalListeners() || $emitter->hasListener($event)
+     *
+     * - if any global listeners exist, returns TRUE
+     * - if no global listeners exist, behaves the same way as {@see hasListener()}
+     *
+     * @param string|null $event
      * @return bool
      */
-    public function hasAnyListeners();
+    public function hasAnyListeners($event = null);
 
     /**
      * See at least one event listener exists
      *
-     *  - if an event name is given, checks listeners for that event only
+     *  - if an event name is given, checks listeners of that event only
      *  - if no event name is given, checks listeners of any event
      *  - does not check global listeners, use {@see hasGlobalListeners()} for that
      *
@@ -38,12 +44,10 @@ interface EventEmitterInterface
     /**
      * Get registered event listeners
      *
-     * Meant for debugging / test purposes only.
-     *
      *  - if an event name is given, returns a list listeners of that event only
      *  - if no event name is given, returns a multi-dimensional array where
-     *    the keys are event names and the values are lists of listeners
-     *  - the returned listener lists are sorted by priority
+     *    the keys are event names and the values are lists of callbacks
+     *  - the returned callback lists are sorted by priority
      *  - does not include global listeners, use {@see getGlobalListeners()}
      *    if you need to get those
      *
@@ -53,10 +57,9 @@ interface EventEmitterInterface
     public function getListeners($event = null);
 
     /**
-     * Get registered global event listeners (debug)
+     * Get registered global event listeners
      *
-     *  - meant of debugging / test purposes only
-     *  - returns a list of listeners sorted by priority
+     * Returns a list of callbacks sorted by priority.
      *
      * @return callable[]
      */

@@ -34,6 +34,7 @@ class EventEmitterTest extends \PHPUnit_Framework_TestCase
         $this->assertSame(array(), $emitter->getListeners());
         $this->assertSame(array(), $emitter->getListeners('nonexistent'));
         $this->assertFalse($emitter->hasAnyListeners());
+        $this->assertFalse($emitter->hasAnyListeners('foo'));
 
         $emitter
             ->on('foo', 'test_a', 0)
@@ -43,6 +44,7 @@ class EventEmitterTest extends \PHPUnit_Framework_TestCase
         ;
 
         $this->assertTrue($emitter->hasAnyListeners());
+        $this->assertTrue($emitter->hasAnyListeners('foo'));
 
         $this->assertSame(
             array('test_b', 'test_a'),
@@ -64,6 +66,7 @@ class EventEmitterTest extends \PHPUnit_Framework_TestCase
 
         $this->assertSame(array(), $emitter->getGlobalListeners());
         $this->assertFalse($emitter->hasAnyListeners());
+        $this->assertFalse($emitter->hasAnyListeners('foo'));
 
         $emitter
             ->onAny('test_a', 0)
@@ -71,6 +74,7 @@ class EventEmitterTest extends \PHPUnit_Framework_TestCase
         ;
 
         $this->assertTrue($emitter->hasAnyListeners());
+        $this->assertTrue($emitter->hasAnyListeners('foo'));
         $this->assertSame(array('test_b', 'test_a'), $emitter->getGlobalListeners());
     }
 
