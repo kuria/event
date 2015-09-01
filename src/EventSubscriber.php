@@ -9,7 +9,7 @@ namespace Kuria\Event;
  *
  * @author ShiraNai7 <shira.cz>
  */
-abstract class EventSubscriberAbstract implements EventSubscriberInterface
+abstract class EventSubscriber implements EventSubscriberInterface
 {
     /**
      * Get event map
@@ -23,11 +23,13 @@ abstract class EventSubscriberAbstract implements EventSubscriberInterface
      *      // single method with priority
      *      'bar' => array('onBar', 10),
      *
-     *      // multiple methods (each entry must be an array)
+     *      // multiple methods (indexed list; each entry must be an array)
      *      'baz' => array(
      *          array('onBazA'),
      *          array('onBazB', 5),
      *      ),
+     *
+     *      // ...
      *  )
      *
      * @return array

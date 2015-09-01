@@ -16,12 +16,11 @@ Event library that implements variations of the mediator and observer patterns.
 
 ## <a name="features"></a> Features
 
-- simple to use
-- multiple ways to incorporate the event system (inheritance or as a mediator)
-- listeners can be simple callbacks or event subscribers (objects)
-- listener order can be controlled by specifying priority
-- any number of values can be emitted along with the event
-    - these values are passed to the listeners directly
+- managing listeners for specific events (callbacks & event subscribers)
+- managing global listeners (called for all events)
+- all listeners can be ordered by priority
+- event dispatching
+    - event name + any number of arguments
     - no specialized event object needed (unless you make one)
 
 
@@ -39,7 +38,7 @@ and dispatches events to them.
 
 There are 2 main ways incorporate this functionality into your code:
 
-1) extending the `EventEmitter` class (or using the `EventEmitterTrait`)
+#### 1) extending the `EventEmitter` class (or using the `EventEmitterTrait`)
 
     use Kuria\Event\EventEmitter;
     
@@ -50,7 +49,7 @@ There are 2 main ways incorporate this functionality into your code:
 
     $emitter = new Foo();
 
-2) creating an instance of `EventEmitter` and using it as a mediator
+#### 2) creating an instance of `EventEmitter` and using it as a mediator
 
     use Kuria\Event\EventEmitter;
     
@@ -61,10 +60,25 @@ There are 2 main ways incorporate this functionality into your code:
 
 #### Event listeners
 
-To listen to an event, simply call the `on()` method on an instance of `EventEmitter`.
+To listen to an event, register your callback using the `on()` method:
 
     $emitter->on('some.event', function ($arg1, $arg2) {
         // do something
+    });
+
+To listen to an event only once, register your callback using the `once()` method:
+
+    $emitter->once('some.event', function ($arg1, $arg2) {
+        // do something
+        // called only once (then removed)
+    });
+
+To listen to all events, register your callback using the `onAny()` method. Global listeners are
+invoked before the event-specific ones.
+
+    $emitter->onAny(function ($event, $arg1, $arg2) {
+        // do something
+        // called for all events
     });
 
 
@@ -73,9 +87,9 @@ To listen to an event, simply call the `on()` method on an instance of `EventEmi
 Event subscribers subscribe to a list of events. Each event is mapped to one or more methods
 of the subscriber.
 
-    use Kuria\Event\EventSubscriberAbstract;
+    use Kuria\Event\EventSubscriber;
 
-    class MySubscriber extends EventSubscriberAbstract
+    class MySubscriber extends EventSubscriber
     {
         public function getEvents()
         {
@@ -143,7 +157,7 @@ If you need to pass variable number of arguments or references, use the `emitArr
 
 Any listener can stop further propagation of the current event by returning `FALSE`.
 
-This prevents any pending listeners from being invoked.
+This prevents any other listeners from being invoked.
 
 
 #### Documenting emitted events

@@ -65,7 +65,7 @@ class EventSubscriberTest extends \PHPUnit_Framework_TestCase
             ->subscribe($subscriber)
         ;
 
-        $this->assertSame(5, $emitter->getListenerCount());
+        $this->assertListenerCount($emitter, 5);
 
         $emitter->emit('foo');
         $emitter->emit('bar');
@@ -100,13 +100,15 @@ class EventSubscriberTest extends \PHPUnit_Framework_TestCase
 
         $emitter->subscribe($subscriber);
 
-        $this->assertSame(4, $emitter->getListenerCount());
+        $this->assertListenerCount($emitter, 4);
 
         $emitter->unsubscribe($subscriber);
 
         $emitter->emit('foo');
         $emitter->emit('bar');
         $emitter->emit('baz');
+
+        $this->assertListenerCount($emitter, 0);
     }
 
     /**
@@ -115,7 +117,7 @@ class EventSubscriberTest extends \PHPUnit_Framework_TestCase
     private function getSubscriberMock()
     {
         $subscriber = $this->getMock(
-            __NAMESPACE__ . '\\EventSubscriberAbstract',
+            __NAMESPACE__ . '\\EventSubscriber',
             array('getEvents', 'onFoo', 'onBar', 'onBazA', 'onBazB')
         );
 
@@ -133,5 +135,17 @@ class EventSubscriberTest extends \PHPUnit_Framework_TestCase
         ;
 
         return $subscriber;
+    }
+
+    /**
+     * @param EventEmitterInterface $emitter
+     * @param int                   $expected
+     */
+    private function assertListenerCount(EventEmitterInterface $emitter, $expected)
+    {
+        return $this->assertSame(
+            $expected,
+            array_sum(array_map('sizeof', $emitter->getListeners()))
+        );
     }
 }

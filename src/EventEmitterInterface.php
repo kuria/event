@@ -10,24 +10,57 @@ namespace Kuria\Event;
 interface EventEmitterInterface
 {
     /**
-     * Get number of listeners
+     * See if at least any event listener exists (global or event-specific)
      *
-     * If an event name is given, counts listeners of that event only.
-     *
-     * @param string $event
-     * @return int
+     * @return bool
      */
-    public function getListenerCount($event = null);
+    public function hasAnyListeners();
 
     /**
-     * See if at least one listener exists
+     * See at least one event listener exists
      *
-     * If an event name is given, checks listeners of that event only.
+     *  - if an event name is given, checks listeners for that event only
+     *  - if no event name is given, checks listeners of any event
+     *  - does not check global listeners, use {@see hasGlobalListeners()} for that
      *
      * @param string $event
      * @return bool
      */
     public function hasListener($event = null);
+
+    /**
+     * See if at least one global event listener is registered
+     *
+     * @return bool
+     */
+    public function hasGlobalListeners();
+
+    /**
+     * Get registered event listeners
+     *
+     * Meant for debugging / test purposes only.
+     *
+     *  - if an event name is given, returns a list listeners of that event only
+     *  - if no event name is given, returns a multi-dimensional array where
+     *    the keys are event names and the values are lists of listeners
+     *  - the returned listener lists are sorted by priority
+     *  - does not include global listeners, use {@see getGlobalListeners()}
+     *    if you need to get those
+     *
+     * @param string|null $event
+     * @return array
+     */
+    public function getListeners($event = null);
+
+    /**
+     * Get registered global event listeners (debug)
+     *
+     *  - meant of debugging / test purposes only
+     *  - returns a list of listeners sorted by priority
+     *
+     * @return callable[]
+     */
+    public function getGlobalListeners();
 
     /**
      * Register an event listener
@@ -51,9 +84,17 @@ interface EventEmitterInterface
     public function once($event, $listener, $priority = 0);
 
     /**
-     * Unregister an event listener
+     * Register a global event listener that will be invoked for any event
      *
-     * In case of duplicate listeners, only one will be removed.
+     * Global event listeners are called before any other listeners.
+     *
+     * @param callable $listener
+     * @param int      $priority
+     */
+    public function onAny($listener, $priority = 0);
+
+    /**
+     * Unregister an event listener
      *
      * @param string   $event
      * @param callable $listener
@@ -62,14 +103,31 @@ interface EventEmitterInterface
     public function removeListener($event, $listener);
 
     /**
-     * Unregister all event listeners
+     * Unregister a global event listener
      *
-     * If an event name is given, unregisters listeners of that event only.
+     * @param callable $listener
+     * @return static
+     */
+    public function removeGlobalListener($listener);
+
+    /**
+     * Clear event listeners
+     *
+     *  - if an event name is given, clears listeners of that event only.
+     *  - does not clear global event listeners, use {@see clearGlobalListeners()}
+     *    if you need to clear those
      *
      * @param string|null $event
      * @return static
      */
     public function clearListeners($event = null);
+
+    /**
+     * Unregister all global event listeners
+     *
+     * @return static
+     */
+    public function clearGlobalListeners();
 
     /**
      * Register an event subscriber
@@ -94,7 +152,6 @@ interface EventEmitterInterface
      *
      * @param string $event
      * @param mixed  $arg1,...
-     * @return bool
      */
     public function emit($event);
 
@@ -105,7 +162,6 @@ interface EventEmitterInterface
      *
      * @param string $event
      * @param array  $args
-     * @return bool
      */
     public function emitArray($event, array $args);
 }
