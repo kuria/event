@@ -12,19 +12,32 @@ class EventEmitterTest extends \PHPUnit_Framework_TestCase
         return new EventEmitter();
     }
 
-    public function testInitialState()
+    public function testHasListeners()
     {
         $emitter = $this->createEventEmitter();
 
-        $this->assertFalse($emitter->hasListener());
-        $this->assertFalse($emitter->hasGlobalListeners());
+        // check with no listeners
+        $this->assertFalse($emitter->hasListeners());
+        $this->assertFalse($emitter->hasListeners('foo'));
+        $this->assertFalse($emitter->hasListeners('foo', false));
+        $this->assertFalse($emitter->hasListeners(null, false));
+
+        // check with some listener
+        $emitter->on('foo', 'test_a');
+
+        $this->assertTrue($emitter->hasListeners());
+        $this->assertTrue($emitter->hasListeners('foo'));
+        $this->assertTrue($emitter->hasListeners('foo', false));
+        $this->assertTrue($emitter->hasListeners(null, false));
+
+        // check non-registered event without global listeners
+        $this->assertFalse($emitter->hasListeners('bar'));
+
+        // check non-registered event with global listeners
+        $emitter->on('*', 'test_b');
         
-        $emitter->emit('foo');
-        $emitter->removeListener('foo', 'nonexistent');
-        $emitter->removeGlobalListener('nonexistent');
-        $emitter->clearListeners('foo');
-        $emitter->clearListeners();
-        $emitter->clearGlobalListeners();
+        $this->assertTrue($emitter->hasListeners('bar'));
+        $this->assertFalse($emitter->hasListeners('bar', false));
     }
 
     public function testGetListeners()
@@ -33,8 +46,6 @@ class EventEmitterTest extends \PHPUnit_Framework_TestCase
 
         $this->assertSame(array(), $emitter->getListeners());
         $this->assertSame(array(), $emitter->getListeners('nonexistent'));
-        $this->assertFalse($emitter->hasAnyListeners());
-        $this->assertFalse($emitter->hasAnyListeners('foo'));
 
         $emitter
             ->on('foo', 'test_a', 0)
@@ -42,9 +53,6 @@ class EventEmitterTest extends \PHPUnit_Framework_TestCase
             ->on('bar', 'test_c', 10)
             ->on('bar', 'test_d', 15)
         ;
-
-        $this->assertTrue($emitter->hasAnyListeners());
-        $this->assertTrue($emitter->hasAnyListeners('foo'));
 
         $this->assertSame(
             array('test_b', 'test_a'),
@@ -58,24 +66,6 @@ class EventEmitterTest extends \PHPUnit_Framework_TestCase
             ),
             $emitter->getListeners()
         );
-    }
-
-    public function testGetGlobalListeners()
-    {
-        $emitter = $this->createEventEmitter();
-
-        $this->assertSame(array(), $emitter->getGlobalListeners());
-        $this->assertFalse($emitter->hasAnyListeners());
-        $this->assertFalse($emitter->hasAnyListeners('foo'));
-
-        $emitter
-            ->onAny('test_a', 0)
-            ->onAny('test_b', 5)
-        ;
-
-        $this->assertTrue($emitter->hasAnyListeners());
-        $this->assertTrue($emitter->hasAnyListeners('foo'));
-        $this->assertSame(array('test_b', 'test_a'), $emitter->getGlobalListeners());
     }
 
     public function testOn()
@@ -112,35 +102,28 @@ class EventEmitterTest extends \PHPUnit_Framework_TestCase
         ));
     }
 
-    public function testOnAny()
-    {
-        $emitter = $this->createEventEmitter();
-
-        $listenerA = function () {};
-        $listenerB = function () {};
-
-        $emitter->onAny($listenerA);
-        $emitter->onAny($listenerB, 5);
-
-        $this->assertGlobalListeners($emitter, array(
-            $listenerB, $listenerA
-        ));
-    }
-
     public function testRemoveListener()
     {
         $emitter = $this->createEventEmitter();
 
-        $callStatus = array(false, false, false);
+        $callStatus = array(
+            'a' => false,
+            'b' => false,
+            'ag' => false,
+            'bg' => false,
+        );
 
         $listenerA = function () use (&$callStatus) {
-            $callStatus[0] = true;
+            $callStatus['a'] = true;
         };
         $listenerB = function () use (&$callStatus) {
-            $callStatus[1] = true;
+            $callStatus['b'] = true;
         };
-        $listenerC = function () use (&$callStatus) {
-            $callStatus[2] = true;
+        $globalListenerA = function () use (&$callStatus) {
+            $callStatus['ga'] = true;
+        };
+        $globalListenerB = function () use (&$callStatus) {
+            $callStatus['gb'] = true;
         };
 
         $emitter
@@ -148,16 +131,20 @@ class EventEmitterTest extends \PHPUnit_Framework_TestCase
             ->on('foo', $listenerA) // duplicate on purpose
             ->on('bar', $listenerA, 1)
             ->on('bar', $listenerB, 0)
+            ->on('*', $globalListenerA, 0)
+            ->on('*', $globalListenerB, 1)
         ;
 
         $this->assertListeners($emitter, array(
+            '*' => array($globalListenerB, $globalListenerA),
             'foo' => array($listenerA, $listenerA),
             'bar' => array($listenerA, $listenerB),
         ));
 
-        $emitter->removeListener('foo', $listenerC); // should have no effect
+        $emitter->removeListener('foo', $globalListenerA); // should have no effect
 
         $this->assertListeners($emitter, array(
+            '*' => array($globalListenerB, $globalListenerA),
             'foo' => array($listenerA, $listenerA),
             'bar' => array($listenerA, $listenerB),
         ));
@@ -172,6 +159,7 @@ class EventEmitterTest extends \PHPUnit_Framework_TestCase
         $emitter->removeListener('foo', $listenerA);
 
         $this->assertListeners($emitter, array(
+            '*' => array($globalListenerB, $globalListenerA),
             'foo' => array(),
             'bar' => array($listenerA, $listenerB),
         ));
@@ -179,10 +167,23 @@ class EventEmitterTest extends \PHPUnit_Framework_TestCase
         $emitter->removeListener('bar', $listenerB);
 
         $this->assertListeners($emitter, array(
+            '*' => array($globalListenerB, $globalListenerA),
             'bar' => array($listenerA),
         ));
 
         $emitter->removeListener('bar', $listenerA);
+
+        $this->assertListeners($emitter, array(
+            '*' => array($globalListenerB, $globalListenerA),
+        ));
+
+        $emitter->removeListener('*', $globalListenerA);
+
+        $this->assertListeners($emitter, array(
+            '*' => array($globalListenerB),
+        ));
+
+        $emitter->removeListener('*', $globalListenerB);
 
         $this->assertListeners($emitter, array());
 
@@ -191,51 +192,7 @@ class EventEmitterTest extends \PHPUnit_Framework_TestCase
         $emitter->emit('bar');
         $emitter->emitArray('bar', array());
 
-        $this->assertSame(array(false, false, false), $callStatus);
-    }
-
-    public function testRemoveGlobalListener()
-    {
-        $emitter = $this->createEventEmitter();
-
-        $callStatus = array(false, false, false);
-
-        $listenerA = function () use (&$callStatus) {
-            $callStatus[0] = true;
-        };
-        $listenerB = function () use (&$callStatus) {
-            $callStatus[1] = true;
-        };
-        $listenerC = function () use (&$callStatus) {
-            $callStatus[2] = true;
-        };
-
-        $emitter
-            ->onAny($listenerA)
-            ->onAny($listenerA, 1) // duplicate on purpose
-            ->onAny($listenerB, 2)
-        ;
-
-        $this->assertGlobalListeners($emitter, array($listenerB, $listenerA, $listenerA));
-
-        $emitter->removeGlobalListener($listenerC); // should have no effect
-        $this->assertGlobalListeners($emitter, array($listenerB, $listenerA, $listenerA));
-
-        $emitter->removeGlobalListener($listenerA);
-        $this->assertGlobalListeners($emitter, array($listenerB, $listenerA));
-
-        $emitter->removeGlobalListener($listenerA);
-        $this->assertGlobalListeners($emitter, array($listenerB));
-        
-        $emitter->removeGlobalListener($listenerB);
-        $this->assertGlobalListeners($emitter, array());
-
-        $emitter->emit('foo');
-        $emitter->emitArray('foo', array());
-        $emitter->emit('bar');
-        $emitter->emitArray('bar', array());
-
-        $this->assertSame(array(false, false, false), $callStatus);
+        $this->assertSame(array('a' => false, 'b' => false, 'ag' => false, 'bg' => false), $callStatus);
     }
 
     public function testClearingListeners()
@@ -366,8 +323,8 @@ class EventEmitterTest extends \PHPUnit_Framework_TestCase
         $emitter
             ->on('foo', $listenerA)
             ->on('foo', $listenerB)
-            ->onAny($globalListenerA)
-            ->onAny($globalListenerB)
+            ->on('*', $globalListenerA)
+            ->on('*', $globalListenerB)
         ;
 
         // emit the event twice
@@ -406,26 +363,48 @@ class EventEmitterTest extends \PHPUnit_Framework_TestCase
 
         $emitter = $this->createEventEmitter();
 
-        $listenerACallCount = 0;
-        $listenerBCallCount = 0;
+        $listenerCallCounters = array(
+            'a' => 0,
+            'b' => 0,
+            'ga' => 0,
+            'gb' => 0,
+        );
 
-        $listenerA = function ($arg1, $arg2) use ($that, &$listenerACallCount) {
+        $listenerA = function ($arg1, $arg2) use ($that, &$listenerCallCounters) {
             $that->assertSame('hello', $arg1);
             $that->assertSame(123, $arg2);
 
-            ++$listenerACallCount;
+            ++$listenerCallCounters['a'];
         };
 
-        $listenerB = function ($arg1, $arg2) use ($that, &$listenerBCallCount) {
+        $listenerB = function ($arg1, $arg2) use ($that, &$listenerCallCounters) {
             $that->assertSame('hello', $arg1);
             $that->assertSame(123, $arg2);
 
-            ++$listenerBCallCount;
+            ++$listenerCallCounters['b'];
+        };
+
+        $globalListenerA = function ($event, $arg1, $arg2) use ($that, &$listenerCallCounters) {
+            $that->assertSame('foo', $event);
+            $that->assertSame('hello', $arg1);
+            $that->assertSame(123, $arg2);
+
+            ++$listenerCallCounters['ga'];
+        };
+
+        $globalListenerB = function ($event, $arg1, $arg2) use ($that, &$listenerCallCounters) {
+            $that->assertSame('foo', $event);
+            $that->assertSame('hello', $arg1);
+            $that->assertSame(123, $arg2);
+            
+            ++$listenerCallCounters['gb'];
         };
 
         $emitter
             ->once('foo', $listenerA)
             ->once('foo', $listenerB)
+            ->once('*', $globalListenerA)
+            ->once('*', $globalListenerB)
         ;
 
         // emit the event twice
@@ -433,8 +412,7 @@ class EventEmitterTest extends \PHPUnit_Framework_TestCase
         $emitMethodCaller($emitter, 'foo', array('hello', 123));
 
         // the listeners should be called just once
-        $this->assertSame(1, $listenerACallCount);
-        $this->assertSame(1, $listenerBCallCount);
+        $this->assertSame(array('a' => 1, 'b' => 1, 'ga' => 1, 'gb' => 1), $listenerCallCounters);
     }
 
     public function testEmitArrayReference()
@@ -453,7 +431,7 @@ class EventEmitterTest extends \PHPUnit_Framework_TestCase
 
         $emitter
             ->on('foo', $listener)
-            ->onAny($globalListener)
+            ->on('*', $globalListener)
         ;
 
         $emitter->emitArray('foo', array(&$referencedVariable));
@@ -548,9 +526,9 @@ class EventEmitterTest extends \PHPUnit_Framework_TestCase
             ->on('foo', $listenerA, -1)
             ->on('foo', $listenerB, 1)
             ->on('foo', $listenerC)
-            ->onAny($globalListenerA, -1)
-            ->onAny($globalListenerB, 1)
-            ->onAny($globalListenerC)
+            ->on('*', $globalListenerA, -1)
+            ->on('*', $globalListenerB, 1)
+            ->on('*', $globalListenerC)
         ;
 
         $emitMethodCaller($emitter, 'foo');
@@ -641,8 +619,8 @@ class EventEmitterTest extends \PHPUnit_Framework_TestCase
 
         $emitter
             ->on('foo', $listenerA)
-            ->onAny($globalListenerA, 1)
-            ->onAny($globalListenerB, 0)
+            ->on('*', $globalListenerA, 1)
+            ->on('*', $globalListenerB, 0)
         ;
 
         $emitMethodCaller($emitter, 'foo');
@@ -688,35 +666,18 @@ class EventEmitterTest extends \PHPUnit_Framework_TestCase
             if ($expectedListeners) {
                 $shouldHaveSomeListeners = true;
 
-                $this->assertTrue($emitter->hasListener($event));
+                $this->assertTrue($emitter->hasListeners($event, false));
                 $this->assertArrayHasKey($event, $actualListeners);
                 $this->assertSame($expectedListeners, $actualListeners[$event]);
                 $this->assertSame($expectedListeners, $emitter->getListeners($event));
 
             } else {
-                $this->assertFalse($emitter->hasListener($event));
+                $this->assertFalse($emitter->hasListeners($event, false));
                 $this->assertArrayNotHasKey($event, $actualListeners);
                 $this->assertSame(array(), $emitter->getListeners($event));
             }
         }
 
-        $this->assertSame($shouldHaveSomeListeners, $emitter->hasListener());
-    }
-
-    /**
-     * Assert global listener list
-     *
-     * @param EventEmitterInterface $emitter
-     * @param callable[]            $expected
-     */
-    private function assertGlobalListeners(EventEmitterInterface $emitter, array $expected)
-    {
-        if ($expected) {
-            $this->assertTrue($emitter->hasGlobalListeners());
-            $this->assertSame($expected, $emitter->getGlobalListeners());
-        } else {
-            $this->assertFalse($emitter->hasGlobalListeners());
-            $this->assertSame(array(), $emitter->getGlobalListeners());
-        }
+        $this->assertSame($shouldHaveSomeListeners, $emitter->hasListeners());
     }
 }

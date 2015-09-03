@@ -16,31 +16,13 @@ trait EventEmitterTrait
     private $listeners;
     private $entries;
     private $unsortedEventsMap;
-    private $globalListeners;
-    private $globalEntries;
 
-    public function hasAnyListeners($event = null)
-    {
-        return
-            $this->globalEntries
-            || (
-                null !== $event
-                    ? isset($this->entries[$event])
-                    : $this->entries
-            );
-    }
-
-    public function hasListener($event = null)
+    public function hasListeners($event = null, $checkGlobal = true)
     {
         return null !== $event
-            ? isset($this->entries[$event])
+            ? isset($this->entries[$event]) || $checkGlobal && isset($this->entries[self::ANY_EVENT])
             : !empty($this->entries)
         ;
-    }
-
-    public function hasGlobalListeners()
-    {
-        return !empty($this->globalEntries);
     }
 
     public function getListeners($event = null)
@@ -49,16 +31,16 @@ trait EventEmitterTrait
             if (null !== $event) {
                 if (isset($this->entries[$event])) {
                     if (isset($this->unsortedEventsMap[$event])) {
-                        $this->sortListeners($this->listeners[$event], $this->entries[$event]);
-                        unset($this->unsortedEventsMap[$event]);
+                        $this->sortListeners($event);
                     }
 
                     return $this->listeners[$event];
                 }
             } else {
+
                 if ($this->unsortedEventsMap) {
                     foreach ($this->unsortedEventsMap as $event => $_) {
-                        $this->sortListeners($this->listeners[$event], $this->entries[$event]);
+                        $this->sortListeners($event);
                     }
                     $this->unsortedEventsMap = null;
                 }
@@ -70,68 +52,16 @@ trait EventEmitterTrait
         return array();
     }
 
-    public function getGlobalListeners()
-    {
-        if ($this->globalEntries) {
-            if (null === $this->globalListeners) {
-                $this->sortListeners($this->globalListeners, $this->globalEntries);
-            }
-
-            return $this->globalListeners;
-        }
-
-        return array();
-    }
-
     public function on($event, $listener, $priority = 0)
     {
-        $listenersReset = false;
-
-        $this->registerListener(
-            $listener,
-            $priority,
-            false,
-            $this->listeners[$event],
-            $this->entries[$event],
-            $listenersReset
-        );
-
-        if ($listenersReset) {
-            $this->unsortedEventsMap[$event] = true;
-        }
+        $this->registerListener($event, $listener, $priority, false);
 
         return $this;
     }
 
     public function once($event, $listener, $priority = 0)
     {
-        $listenersReset = false;
-
-        $this->registerListener(
-            $listener,
-            $priority,
-            true,
-            $this->listeners[$event],
-            $this->entries[$event],
-            $listenersReset
-        );
-
-        if ($listenersReset) {
-            $this->unsortedEventsMap[$event] = true;
-        }
-
-        return $this;
-    }
-
-    public function onAny($listener, $priority = 0)
-    {
-        $this->registerListener(
-            $listener,
-            $priority,
-            null,
-            $this->globalListeners,
-            $this->globalEntries
-        );
+        $this->registerListener($event, $listener, $priority, true);
 
         return $this;
     }
@@ -139,24 +69,7 @@ trait EventEmitterTrait
     public function removeListener($event, $listener)
     {
         if (isset($this->entries[$event])) {
-            if ($this->unregisterListener($listener, $this->listeners[$event], $this->entries[$event])) {
-                if (null === $this->entries[$event]) {
-                    unset(
-                        $this->entries[$event],
-                        $this->listeners[$event],
-                        $this->unsortedEventsMap[$event]
-                    );
-                }
-            }
-        }
-
-        return $this;
-    }
-
-    public function removeGlobalListener($listener)
-    {
-        if ($this->globalEntries) {
-            $this->unregisterListener($listener, $this->globalListeners, $this->globalEntries);
+            $this->unregisterListener($event, $listener);
         }
 
         return $this;
@@ -179,14 +92,6 @@ trait EventEmitterTrait
         return $this;
     }
 
-    public function clearGlobalListeners()
-    {
-        $this->globalListeners = null;
-        $this->globalEntries = null;
-
-        return $this;
-    }
-
     public function subscribe(EventSubscriberInterface $subscriber)
     {
         $subscriber->subscribeTo($this);
@@ -203,49 +108,38 @@ trait EventEmitterTrait
 
     public function emit($event)
     {
-        if ($this->globalEntries || isset($this->entries[$event])) {
-            $args = func_get_args();
-        }
+        $args = null;
+        $toRemove = null;
 
-        if ($this->globalEntries) {
-            if (null === $this->globalListeners) {
-                $this->sortListeners($this->globalListeners, $this->globalEntries);
-            }
+        foreach (array(self::ANY_EVENT, $event) as $pass => $current) {
+            if (isset($this->entries[$current])) {
+                if (0 === $pass) {
+                    $args = func_get_args();
+                } else {
+                    $args = array_slice(null === $args ? func_get_args() : $args, 1);
+                }
 
-            foreach ($this->globalListeners as $callback) {
-                if (false === call_user_func_array($callback, $args)) {
-                    return;
+                if (isset($this->unsortedEventsMap[$current])) {
+                    $this->sortListeners($current);
+                    unset($this->unsortedEventsMap[$current]);
+                }
+
+                foreach ($this->listeners[$current] as $index => $callback) {
+                    if (isset($this->entries[$current][$index]['once'])) {
+                        $toRemove[$current][] = $index;
+                    }
+
+                    if (false === call_user_func_array($callback, $args)) {
+                        return;
+                    }
                 }
             }
         }
 
-        if (isset($this->entries[$event])) {
-            $args = array_slice($args, 1);
-
-            if (isset($this->unsortedEventsMap[$event])) {
-                $this->sortListeners($this->listeners[$event], $this->entries[$event]);
-                unset($this->unsortedEventsMap[$event]);
-            }
-
-            $indexesToRemove = null;
-            foreach ($this->listeners[$event] as $index => $callback) {
-                if (isset($this->entries[$event][$index]['once'])) {
-                    $indexesToRemove[] = $index;
-                }
-
-                if (false === call_user_func_array($callback, $args)) {
-                    return;
-                }
-            }
-
-            if ($indexesToRemove) {
-                $this->unregisterListenersAtIndexes($indexesToRemove, $this->listeners[$event], $this->entries[$event]);
-
-                if (null === $this->entries[$event]) {
-                    unset(
-                        $this->entries[$event],
-                        $this->listeners[$event]
-                    );
+        if ($toRemove) {
+            foreach ($toRemove as $current => $indexes) {
+                for ($i = sizeof($indexes) - 1; $i >= 0; --$i) {
+                    $this->unregisterListener($current, $indexes[$i], true);
                 }
             }
         }
@@ -253,60 +147,50 @@ trait EventEmitterTrait
 
     public function emitArray($event, array $args)
     {
-        if ($this->globalEntries) {
-            $globalArgs = array_merge(array($event), $args);
 
-            if (null === $this->globalListeners) {
-                $this->sortListeners($this->globalListeners, $this->globalEntries);
-            }
+        $toRemove = null;
 
-            foreach ($this->globalListeners as $callback) {
-                if (false === call_user_func_array($callback, $globalArgs)) {
-                    return;
+        foreach (array(self::ANY_EVENT, $event) as $pass => $current) {
+            if (isset($this->entries[$current])) {
+                if (0 === $pass) {
+                    $currentArgs = array_merge(array($event), $args);
+                } else {
+                    $currentArgs = $args;
+                }
+
+                if (isset($this->unsortedEventsMap[$current])) {
+                    $this->sortListeners($current);
+                    unset($this->unsortedEventsMap[$current]);
+                }
+
+                foreach ($this->listeners[$current] as $index => $callback) {
+                    if (isset($this->entries[$current][$index]['once'])) {
+                        $toRemove[$current][] = $index;
+                    }
+
+                    if (false === call_user_func_array($callback, $currentArgs)) {
+                        return;
+                    }
                 }
             }
-
-            $globalArgs = null;
         }
 
-        if (isset($this->entries[$event])) {
-            if (isset($this->unsortedEventsMap[$event])) {
-                $this->sortListeners($this->listeners[$event], $this->entries[$event]);
-                unset($this->unsortedEventsMap[$event]);
-            }
-
-            $indexesToRemove = null;
-            foreach ($this->listeners[$event] as $index => $callback) {
-                if (isset($this->entries[$event][$index]['once'])) {
-                    $indexesToRemove[] = $index;
-                }
-
-                if (false === call_user_func_array($callback, $args)) {
-                    return;
-                }
-            }
-
-            if ($indexesToRemove) {
-                $this->unregisterListenersAtIndexes($indexesToRemove, $this->listeners[$event], $this->entries[$event]);
-
-                if (null === $this->entries[$event]) {
-                    unset(
-                        $this->entries[$event],
-                        $this->listeners[$event]
-                    );
+        if ($toRemove) {
+            foreach ($toRemove as $current => $indexes) {
+                for ($i = sizeof($indexes) - 1; $i >= 0; --$i) {
+                    $this->unregisterListener($current, $indexes[$i], true);
                 }
             }
         }
     }
 
-    private function registerListener($listener, $priority, $once, &$listeners, &$entries, &$listenersReset = null)
+    private function registerListener($event, $listener, $priority, $once)
     {
-        if (null === $entries) {
-            $entries = array();
-            $listeners = array($listener);
+        if (!isset($this->entries[$event])) {
+            $this->entries[$event] = array();
+            $this->listeners[$event] = array($listener);
         } else {
-            $listeners = null;
-            $listenersReset = true;
+            $this->unsortedEventsMap[$event] = true;
         }
 
         $entry = array(
@@ -318,59 +202,59 @@ trait EventEmitterTrait
             $entry['once'] = true;
         }
 
-        $entries[] = $entry;
+        $this->entries[$event][] = $entry;
     }
 
-    private function unregisterListener($listener, array &$listeners, array &$entries)
+    private function unregisterListener($event, $listener, $byIndex = false)
     {
-        $found = false;
-        foreach ($entries as $index => $entry) {
-            if ($entry['listener'] === $listener) {
-                $found = true;
-                break;
+        if ($byIndex) {
+            $index = $listener;
+            $found = isset($this->entries[$event][$index]);
+        } else {
+            $found = false;
+            foreach ($this->entries[$event] as $index => $entry) {
+                if ($entry['listener'] === $listener) {
+                    $found = true;
+                    break;
+                }
             }
         }
 
-        if ($found) {
-            array_splice($entries, $index, 1);
 
-            if (!$entries) {
-                $entries = null;
-                $listeners = null;
-            } elseif (null !== $listeners) {
-                array_splice($listeners, $index, 1);
+        if ($found) {
+            array_splice($this->entries[$event], $index, 1);
+
+            if ($this->entries[$event]) {
+                if (isset($this->listeners[$event])) {
+                    array_splice($this->listeners[$event], $index, 1);
+                }
+            } else {
+                unset(
+                    $this->entries[$event],
+                    $this->listeners[$event],
+                    $this->unsortedEventsMap[$event]
+                );
             }
         }
 
         return $found;
     }
 
-    private function unregisterListenersAtIndexes(array $indexes, array &$listeners, array &$entries)
+    private function sortListeners($event)
     {
-        for ($i = sizeof($indexes) - 1; $i >= 0; --$i) {
-            array_splice($listeners, $indexes[$i], 1);
-            array_splice($entries, $indexes[$i], 1);
-        }
+        $this->listeners[$event] = array();
 
-        if (!$entries) {
-            $entries = null;
-            $listeners = null;
-        }
-    }
-
-    private function sortListeners(&$listeners, array &$entries)
-    {
-        $listeners = array();
-
-        usort($entries, function ($a, $b) {
+        usort($this->entries[$event], function ($a, $b) {
             return $a['priority'] > $b['priority']
                 ? -1
                 : ($a['priority'] < $b['priority'] ? 1 : 0)
             ;
         });
 
-        foreach ($entries as $entry) {
-            $listeners[] = $entry['listener'];
+        foreach ($this->entries[$event] as $entry) {
+            $this->listeners[$event][] = $entry['listener'];
         }
+
+        unset($this->unsortedEventsMap[$event]);
     }
 }

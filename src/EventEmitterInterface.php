@@ -9,37 +9,20 @@ namespace Kuria\Event;
  */
 interface EventEmitterInterface
 {
-    /**
-     * See if any listener exists
-     *
-     * Shortcut for: $emitter->hasGlobalListeners() || $emitter->hasListener($event)
-     *
-     * - if any global listeners exist, returns TRUE
-     * - if no global listeners exist, behaves the same way as {@see hasListener()}
-     *
-     * @param string|null $event
-     * @return bool
-     */
-    public function hasAnyListeners($event = null);
-
+    /** Global event (emitted before any other event) */
+    const ANY_EVENT = '*';
+    
     /**
      * See at least one event listener exists
      *
      *  - if an event name is given, checks listeners of that event only
      *  - if no event name is given, checks listeners of any event
-     *  - does not check global listeners, use {@see hasGlobalListeners()} for that
      *
      * @param string $event
+     * @param bool   $checkGlobal if checking a specific event, check existence of any global listeners too 1/0
      * @return bool
      */
-    public function hasListener($event = null);
-
-    /**
-     * See if at least one global event listener is registered
-     *
-     * @return bool
-     */
-    public function hasGlobalListeners();
+    public function hasListeners($event = null, $checkGlobal = true);
 
     /**
      * Get registered event listeners
@@ -48,22 +31,11 @@ interface EventEmitterInterface
      *  - if no event name is given, returns a multi-dimensional array where
      *    the keys are event names and the values are lists of callbacks
      *  - the returned callback lists are sorted by priority
-     *  - does not include global listeners, use {@see getGlobalListeners()}
-     *    if you need to get those
      *
      * @param string|null $event
      * @return array
      */
     public function getListeners($event = null);
-
-    /**
-     * Get registered global event listeners
-     *
-     * Returns a list of callbacks sorted by priority.
-     *
-     * @return callable[]
-     */
-    public function getGlobalListeners();
 
     /**
      * Register an event listener
@@ -87,16 +59,6 @@ interface EventEmitterInterface
     public function once($event, $listener, $priority = 0);
 
     /**
-     * Register a global event listener that will be invoked for any event
-     *
-     * Global event listeners are called before any other listeners.
-     *
-     * @param callable $listener
-     * @param int      $priority
-     */
-    public function onAny($listener, $priority = 0);
-
-    /**
      * Unregister an event listener
      *
      * @param string   $event
@@ -106,31 +68,14 @@ interface EventEmitterInterface
     public function removeListener($event, $listener);
 
     /**
-     * Unregister a global event listener
-     *
-     * @param callable $listener
-     * @return static
-     */
-    public function removeGlobalListener($listener);
-
-    /**
      * Clear event listeners
      *
      *  - if an event name is given, clears listeners of that event only.
-     *  - does not clear global event listeners, use {@see clearGlobalListeners()}
-     *    if you need to clear those
      *
      * @param string|null $event
      * @return static
      */
     public function clearListeners($event = null);
-
-    /**
-     * Unregister all global event listeners
-     *
-     * @return static
-     */
-    public function clearGlobalListeners();
 
     /**
      * Register an event subscriber
