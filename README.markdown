@@ -17,8 +17,8 @@ Event library that implements variations of the mediator and observer patterns.
 ## <a name="features"></a> Features
 
 - managing listeners for specific events (callbacks & event subscribers)
-- managing global listeners (called for all events)
-- all listeners can be ordered by priority
+- managing global listeners (invoked before any event)
+- indididual listeners can be ordered by priority
 - event dispatching
     - event name + any number of arguments
     - no specialized event object needed (unless you make one)
@@ -70,15 +70,15 @@ To listen to an event only once, register your callback using the `once()` metho
 
     $emitter->once('some.event', function ($arg1, $arg2) {
         // do something
-        // called only once (then removed)
+        // invoked only once (then removed)
     });
 
-To listen to all events, register your callback using the `onAny()` method. Global listeners are
-invoked before the event-specific ones.
+To listen to all events, use `*` as the event name. Global listeners are
+invoked before the event-specific ones. Works with `once()` as well.
 
-    $emitter->onAny(function ($event, $arg1, $arg2) {
+    $emitter->on('*', function ($event, $arg1, $arg2) {
         // do something
-        // called for all events
+        // invoked before any event
     });
 
 
