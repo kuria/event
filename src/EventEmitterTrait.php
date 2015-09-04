@@ -147,7 +147,6 @@ trait EventEmitterTrait
 
     public function emitArray($event, array $args)
     {
-
         $toRemove = null;
 
         foreach (array(self::ANY_EVENT, $event) as $pass => $current) {
