@@ -20,7 +20,7 @@ trait EventEmitterTrait
     public function hasListeners($event = null, $checkGlobal = true)
     {
         return null !== $event
-            ? isset($this->entries[$event]) || $checkGlobal && isset($this->entries[self::ANY_EVENT])
+            ? isset($this->entries[$event]) || $checkGlobal && isset($this->entries[static::ANY_EVENT])
             : !empty($this->entries)
         ;
     }
@@ -94,6 +94,8 @@ trait EventEmitterTrait
 
     public function subscribe(EventSubscriberInterface $subscriber)
     {
+        /** @var EventEmitterInterface $this */
+
         $subscriber->subscribeTo($this);
 
         return $this;
@@ -101,6 +103,8 @@ trait EventEmitterTrait
 
     public function unsubscribe(EventSubscriberInterface $subscriber)
     {
+        /** @var EventEmitterInterface $this */
+
         $subscriber->unsubscribeFrom($this);
 
         return $this;
@@ -111,7 +115,7 @@ trait EventEmitterTrait
         $args = null;
         $toRemove = null;
 
-        foreach (array(self::ANY_EVENT, $event) as $pass => $current) {
+        foreach (array(static::ANY_EVENT, $event) as $pass => $current) {
             if (isset($this->entries[$current])) {
                 if (0 === $pass) {
                     $args = func_get_args();
@@ -149,7 +153,7 @@ trait EventEmitterTrait
     {
         $toRemove = null;
 
-        foreach (array(self::ANY_EVENT, $event) as $pass => $current) {
+        foreach (array(static::ANY_EVENT, $event) as $pass => $current) {
             if (isset($this->entries[$current])) {
                 if (0 === $pass) {
                     $currentArgs = array_merge(array($event), $args);

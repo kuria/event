@@ -19,7 +19,7 @@ class EventEmitter implements EventEmitterInterface
     public function hasListeners($event = null, $checkGlobal = true)
     {
         return null !== $event
-            ? isset($this->entries[$event]) || $checkGlobal && isset($this->entries[self::ANY_EVENT])
+            ? isset($this->entries[$event]) || $checkGlobal && isset($this->entries[static::ANY_EVENT])
             : !empty($this->entries)
         ;
     }
@@ -117,7 +117,7 @@ class EventEmitter implements EventEmitterInterface
         $toRemove = null;
 
         // invoke global listeners, then specific ones
-        foreach (array(self::ANY_EVENT, $event) as $pass => $current) {
+        foreach (array(static::ANY_EVENT, $event) as $pass => $current) {
             if (isset($this->entries[$current])) {
                 // prepare arguments
                 if (0 === $pass) {
@@ -167,7 +167,7 @@ class EventEmitter implements EventEmitterInterface
         $toRemove = null;
 
         // invoke global listeners, then specific ones
-        foreach (array(self::ANY_EVENT, $event) as $pass => $current) {
+        foreach (array(static::ANY_EVENT, $event) as $pass => $current) {
             if (isset($this->entries[$current])) {
                 // prepare arguments
                 if (0 === $pass) {
