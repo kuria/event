@@ -184,7 +184,7 @@ Priority can be specified when a listener is being registered.
 
 
 Emitting events
----------------
+===============
 
 Events are emitted using the ``emit()`` method.
 
