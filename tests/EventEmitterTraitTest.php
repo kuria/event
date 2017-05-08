@@ -9,6 +9,8 @@ class EventEmitterTraitTest extends EventEmitterTest
 {
     protected function createEventEmitter()
     {
+        require_once __DIR__ . '/TestEventEmitterFromTrait.php';
+
         return new TestEventEmitterFromTrait();
     }
 }
