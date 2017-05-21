@@ -13,5 +13,10 @@
         "psr-4": {
             "Kuria\\Event\\": "src"
         }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Kuria\\Event\\": "tests"
+        }
     }
 }
