@@ -21,8 +21,7 @@ trait EventEmitterTrait
     {
         return null !== $event
             ? isset($this->entries[$event]) || $checkGlobal && isset($this->entries[static::ANY_EVENT])
-            : !empty($this->entries)
-        ;
+            : !empty($this->entries);
     }
 
     public function getListeners($event = null)
@@ -37,7 +36,6 @@ trait EventEmitterTrait
                     return $this->listeners[$event];
                 }
             } else {
-
                 if ($this->unsortedEventsMap) {
                     foreach ($this->unsortedEventsMap as $event => $_) {
                         $this->sortListeners($event);
@@ -250,8 +248,7 @@ trait EventEmitterTrait
         usort($this->entries[$event], function ($a, $b) {
             return $a['priority'] > $b['priority']
                 ? -1
-                : ($a['priority'] < $b['priority'] ? 1 : 0)
-            ;
+                : ($a['priority'] < $b['priority'] ? 1 : 0);
         });
 
         foreach ($this->entries[$event] as $entry) {

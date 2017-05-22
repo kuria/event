@@ -51,8 +51,7 @@ class EventEmitterTest extends \PHPUnit_Framework_TestCase
             ->on('foo', 'test_a', 0)
             ->on('foo', 'test_b', 5)
             ->on('bar', 'test_c', 10)
-            ->on('bar', 'test_d', 15)
-        ;
+            ->on('bar', 'test_d', 15);
 
         $this->assertSame(
             array('test_b', 'test_a'),
@@ -132,8 +131,7 @@ class EventEmitterTest extends \PHPUnit_Framework_TestCase
             ->on('bar', $listenerA, 1)
             ->on('bar', $listenerB, 0)
             ->on('*', $globalListenerA, 0)
-            ->on('*', $globalListenerB, 1)
-        ;
+            ->on('*', $globalListenerB, 1);
 
         $this->assertListeners($emitter, array(
             '*' => array($globalListenerB, $globalListenerA),
@@ -210,8 +208,7 @@ class EventEmitterTest extends \PHPUnit_Framework_TestCase
             ->on('bar', $listenerB, 2)
             ->on('bar', $listenerC, 1)
             ->on('baz', $listenerB, 2)
-            ->on('baz', $listenerC, 1)
-        ;
+            ->on('baz', $listenerC, 1);
 
         $this->assertListeners($emitter, array(
             'foo' => array($listenerA, $listenerA),
@@ -244,8 +241,7 @@ class EventEmitterTest extends \PHPUnit_Framework_TestCase
 
         $subscriber
             ->expects($this->once())
-            ->method('subscribeTo')
-        ;
+            ->method('subscribeTo');
 
         $emitter->subscribe($subscriber);
     }
@@ -258,8 +254,7 @@ class EventEmitterTest extends \PHPUnit_Framework_TestCase
 
         $subscriber
             ->expects($this->once())
-            ->method('unsubscribeFrom')
-        ;
+            ->method('unsubscribeFrom');
 
         $emitter->unsubscribe($subscriber);
     }
@@ -324,8 +319,7 @@ class EventEmitterTest extends \PHPUnit_Framework_TestCase
             ->on('foo', $listenerA)
             ->on('foo', $listenerB)
             ->on('*', $globalListenerA)
-            ->on('*', $globalListenerB)
-        ;
+            ->on('*', $globalListenerB);
 
         // emit the event twice
         for ($i = 0; $i < 2; ++$i) {
@@ -404,8 +398,7 @@ class EventEmitterTest extends \PHPUnit_Framework_TestCase
             ->once('foo', $listenerA)
             ->once('foo', $listenerB)
             ->once('*', $globalListenerA)
-            ->once('*', $globalListenerB)
-        ;
+            ->once('*', $globalListenerB);
 
         // emit the event twice
         $emitMethodCaller($emitter, 'foo', array('hello', 123));
@@ -431,8 +424,7 @@ class EventEmitterTest extends \PHPUnit_Framework_TestCase
 
         $emitter
             ->on('foo', $listener)
-            ->on('*', $globalListener)
-        ;
+            ->on('*', $globalListener);
 
         $emitter->emitArray('foo', array(&$referencedVariable));
 
@@ -528,8 +520,7 @@ class EventEmitterTest extends \PHPUnit_Framework_TestCase
             ->on('foo', $listenerC)
             ->on('*', $globalListenerA, -1)
             ->on('*', $globalListenerB, 1)
-            ->on('*', $globalListenerC)
-        ;
+            ->on('*', $globalListenerC);
 
         $emitMethodCaller($emitter, 'foo');
 
@@ -571,8 +562,7 @@ class EventEmitterTest extends \PHPUnit_Framework_TestCase
 
         $emitter
             ->on('foo', $listenerA, 1)
-            ->on('foo', $listenerB, 0)
-        ;
+            ->on('foo', $listenerB, 0);
 
         $emitMethodCaller($emitter, 'foo');
 
@@ -620,8 +610,7 @@ class EventEmitterTest extends \PHPUnit_Framework_TestCase
         $emitter
             ->on('foo', $listenerA)
             ->on('*', $globalListenerA, 1)
-            ->on('*', $globalListenerB, 0)
-        ;
+            ->on('*', $globalListenerB, 0);
 
         $emitMethodCaller($emitter, 'foo');
 

@@ -20,8 +20,7 @@ class EventEmitter implements EventEmitterInterface
     {
         return null !== $event
             ? isset($this->entries[$event]) || $checkGlobal && isset($this->entries[static::ANY_EVENT])
-            : !empty($this->entries)
-        ;
+            : !empty($this->entries);
     }
 
     public function getListeners($event = null)
@@ -287,8 +286,7 @@ class EventEmitter implements EventEmitterInterface
         usort($this->entries[$event], function ($a, $b) {
             return $a['priority'] > $b['priority']
                 ? -1
-                : ($a['priority'] < $b['priority'] ? 1 : 0)
-            ;
+                : ($a['priority'] < $b['priority'] ? 1 : 0);
         });
 
         foreach ($this->entries[$event] as $entry) {

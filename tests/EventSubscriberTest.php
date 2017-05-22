@@ -17,8 +17,7 @@ class EventSubscriberTest extends \PHPUnit_Framework_TestCase
 
         $subscriber
             ->expects($this->once())
-            ->method('onFoo')
-        ;
+            ->method('onFoo');
 
         $subscriber
             ->expects($this->once())
@@ -28,8 +27,7 @@ class EventSubscriberTest extends \PHPUnit_Framework_TestCase
                 $that->assertFalse($onBarOtherCalled);
 
                 $onBarCalled = true;
-            })
-        ;
+            });
 
         $subscriber
             ->expects($this->once())
@@ -39,8 +37,7 @@ class EventSubscriberTest extends \PHPUnit_Framework_TestCase
                 $that->assertTrue($onBazBCalled);
 
                 $onBazACalled = true;
-            })
-        ;
+            });
 
         $subscriber
             ->expects($this->once())
@@ -50,8 +47,7 @@ class EventSubscriberTest extends \PHPUnit_Framework_TestCase
                 $that->assertFalse($onBazBCalled);
 
                 $onBazBCalled = true;
-            })
-        ;
+            });
 
         $emitter = new EventEmitter();
 
@@ -62,8 +58,7 @@ class EventSubscriberTest extends \PHPUnit_Framework_TestCase
 
                 $onBarOtherCalled = true;
             })
-            ->subscribe($subscriber)
-        ;
+            ->subscribe($subscriber);
 
         $this->assertListenerCount($emitter, 5);
 
@@ -78,23 +73,19 @@ class EventSubscriberTest extends \PHPUnit_Framework_TestCase
 
         $subscriber
             ->expects($this->never())
-            ->method('onFoo')
-        ;
+            ->method('onFoo');
 
         $subscriber
             ->expects($this->never())
-            ->method('onBar')
-        ;
+            ->method('onBar');
 
         $subscriber
             ->expects($this->never())
-            ->method('onBazA')
-        ;
+            ->method('onBazA');
 
         $subscriber
             ->expects($this->never())
-            ->method('onBazB')
-        ;
+            ->method('onBazB');
 
         $emitter = new EventEmitter();
 
@@ -131,8 +122,7 @@ class EventSubscriberTest extends \PHPUnit_Framework_TestCase
                     array('onBazA'),
                     array('onBazB', 10),
                 )
-            ))
-        ;
+            ));
 
         return $subscriber;
     }
