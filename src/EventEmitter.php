@@ -18,15 +18,15 @@ class EventEmitter implements EventEmitterInterface
 
     public function hasListeners($event = null, $checkGlobal = true)
     {
-        return null !== $event
+        return $event !== null
             ? isset($this->entries[$event]) || $checkGlobal && isset($this->entries[static::ANY_EVENT])
             : !empty($this->entries);
     }
 
     public function getListeners($event = null)
     {
-        if (null !== $this->entries) {
-            if (null !== $event) {
+        if ($this->entries !== null) {
+            if ($event !== null) {
                 // single event
                 if (isset($this->entries[$event])) {
                     // sort first if not done yet
@@ -79,7 +79,7 @@ class EventEmitter implements EventEmitterInterface
 
     public function clearListeners($event = null)
     {
-        if (null !== $event) {
+        if ($event !== null) {
             // single event
             unset(
                 $this->listeners[$event],
@@ -119,12 +119,12 @@ class EventEmitter implements EventEmitterInterface
         foreach (array(static::ANY_EVENT, $event) as $pass => $current) {
             if (isset($this->entries[$current])) {
                 // prepare arguments
-                if (0 === $pass) {
+                if ($pass === 0) {
                     // first pass = any event (args with event name)
                     $args = func_get_args();
                 } else {
                     // second pass = specific event (args without event name)
-                    $args = array_slice(null === $args ? func_get_args() : $args, 1);
+                    $args = array_slice($args === null ? func_get_args() : $args, 1);
                 }
 
                 // sort first if not done yet
@@ -140,7 +140,7 @@ class EventEmitter implements EventEmitterInterface
                         $toRemove[$current][] = $index;
                     }
 
-                    if (false === call_user_func_array($callback, $args)) {
+                    if (call_user_func_array($callback, $args) === false) {
                         // propagation stopped
                         return;
                     }
@@ -169,7 +169,7 @@ class EventEmitter implements EventEmitterInterface
         foreach (array(static::ANY_EVENT, $event) as $pass => $current) {
             if (isset($this->entries[$current])) {
                 // prepare arguments
-                if (0 === $pass) {
+                if ($pass === 0) {
                     // first pass = any event (args with event name)
                     $currentArgs = array_merge(array($event), $args);
                 } else {
@@ -190,7 +190,7 @@ class EventEmitter implements EventEmitterInterface
                         $toRemove[$current][] = $index;
                     }
 
-                    if (false === call_user_func_array($callback, $currentArgs)) {
+                    if (call_user_func_array($callback, $currentArgs) === false) {
                         // propagation stopped
                         return;
                     }

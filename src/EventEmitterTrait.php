@@ -19,15 +19,15 @@ trait EventEmitterTrait
 
     public function hasListeners($event = null, $checkGlobal = true)
     {
-        return null !== $event
+        return $event !== null
             ? isset($this->entries[$event]) || $checkGlobal && isset($this->entries[static::ANY_EVENT])
             : !empty($this->entries);
     }
 
     public function getListeners($event = null)
     {
-        if (null !== $this->entries) {
-            if (null !== $event) {
+        if ($this->entries !== null) {
+            if ($event !== null) {
                 if (isset($this->entries[$event])) {
                     if (isset($this->unsortedEventsMap[$event])) {
                         $this->sortListeners($event);
@@ -75,7 +75,7 @@ trait EventEmitterTrait
 
     public function clearListeners($event = null)
     {
-        if (null !== $event) {
+        if ($event !== null) {
             unset(
                 $this->listeners[$event],
                 $this->entries[$event],
@@ -115,10 +115,10 @@ trait EventEmitterTrait
 
         foreach (array(static::ANY_EVENT, $event) as $pass => $current) {
             if (isset($this->entries[$current])) {
-                if (0 === $pass) {
+                if ($pass === 0) {
                     $args = func_get_args();
                 } else {
-                    $args = array_slice(null === $args ? func_get_args() : $args, 1);
+                    $args = array_slice($args === null ? func_get_args() : $args, 1);
                 }
 
                 if (isset($this->unsortedEventsMap[$current])) {
@@ -131,7 +131,7 @@ trait EventEmitterTrait
                         $toRemove[$current][] = $index;
                     }
 
-                    if (false === call_user_func_array($callback, $args)) {
+                    if (call_user_func_array($callback, $args) === false) {
                         return;
                     }
                 }
@@ -153,7 +153,7 @@ trait EventEmitterTrait
 
         foreach (array(static::ANY_EVENT, $event) as $pass => $current) {
             if (isset($this->entries[$current])) {
-                if (0 === $pass) {
+                if ($pass === 0) {
                     $currentArgs = array_merge(array($event), $args);
                 } else {
                     $currentArgs = $args;
@@ -169,7 +169,7 @@ trait EventEmitterTrait
                         $toRemove[$current][] = $index;
                     }
 
-                    if (false === call_user_func_array($callback, $currentArgs)) {
+                    if (call_user_func_array($callback, $currentArgs) === false) {
                         return;
                     }
                 }
