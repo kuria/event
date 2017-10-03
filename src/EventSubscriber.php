@@ -1,68 +1,51 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace Kuria\Event;
 
-/**
- * Event subscriber
- *
- * Maps its methods as listeners for specific events.
- *
- * @author ShiraNai7 <shira.cz>
- */
 abstract class EventSubscriber implements EventSubscriberInterface
 {
-    /**
-     * Get event map
-     *
-     * The return value must be an associative in the following format:
-     *
-     *  array(
-     *      // single method
-     *      'foo' => 'onFoo',
-     *
-     *      // single method with priority
-     *      'bar' => array('onBar', 10),
-     *
-     *      // multiple methods (indexed list; each entry must be an array)
-     *      'baz' => array(
-     *          array('onBazA'),
-     *          array('onBazB', 5),
-     *      ),
-     *
-     *      // ...
-     *  )
-     *
-     * @return array
-     */
-    abstract protected function getEvents();
+    /** @var EventListener[]|null */
+    private $listeners;
 
-    public function subscribeTo(EventEmitterInterface $emitter)
+    function subscribeTo(ObservableInterface $emitter): void
     {
-        foreach ($this->getEvents() as $event => $params) {
-            if (is_string($params)) {
-                $emitter->on($event, array($this, $params));
-            } elseif (is_string($params[0])) {
-                $emitter->on($event, array($this, $params[0]), $params[1]);
-            } else {
-                foreach ($params as $listener) {
-                    $emitter->on($event, array($this, $listener[0]), isset($listener[1]) ? $listener[1] : 0);
-                }
-            }
+        foreach ($this->cachedListeners() as $listener) {
+            $emitter->addListener($listener);
         }
     }
 
-    public function unsubscribeFrom(EventEmitterInterface $emitter)
+    function unsubscribeFrom(ObservableInterface $emitter): void
     {
-        foreach ($this->getEvents() as $event => $params) {
-            if (is_string($params)) {
-                $emitter->removeListener($event, array($this, $params));
-            } elseif (is_string($params[0])) {
-                $emitter->removeListener($event, array($this, $params[0]));
-            } else {
-                foreach ($params as $listener) {
-                    $emitter->removeListener($event, array($this, $listener[0]));
-                }
-            }
+        foreach ($this->cachedListeners() as $listener) {
+            $emitter->removeListener($listener);
         }
+    }
+
+    /**
+     * Get listeners
+     *
+     * Result of this function is cached internally.
+     *
+     * @see EventSubscriber::listen()
+     * @return EventListener[]
+     */
+    abstract protected function getListeners(): array;
+
+    /**
+     * Get listeners and cache them internally for later use
+     *
+     * @return EventListener[]
+     */
+    protected function cachedListeners(): array
+    {
+        return $this->listeners ?? ($this->listeners = $this->getListeners());
+    }
+
+    /**
+     * Create an event listener and map it to a method of this class
+     */
+    protected function listen(string $event, string $methodName, int $priority = 0): EventListener
+    {
+        return new EventListener($event, [$this, $methodName], $priority);
     }
 }

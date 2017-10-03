@@ -1,141 +1,141 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace Kuria\Event;
 
-class EventSubscriberTest extends \PHPUnit_Framework_TestCase
-{
-    public function testSubscribe()
-    {
-        $that = $this;
+use PHPUnit\Framework\TestCase;
 
+class EventSubscriberTest extends TestCase
+{
+    /** @var EventEmitter */
+    private $emitter;
+    /** @var TestEventSubscriber|\PHPUnit_Framework_MockObject_MockObject */
+    private $subscriber;
+
+    protected function setUp()
+    {
+        $this->emitter = new EventEmitter();
+        $this->subscriber = $this->createPartialMock(TestEventSubscriber::class, [
+            'onFoo',
+            'onBar',
+            'onBazA',
+            'onBazB',
+        ]);
+    }
+
+    function testSubscribe()
+    {
         $onBarCalled = false;
         $onBarOtherCalled = false;
         $onBazACalled = false;
         $onBazBCalled = false;
 
-        $subscriber = $this->getSubscriberMock();
-
-        $subscriber
+        $this->subscriber
             ->expects($this->once())
             ->method('onFoo');
 
-        $subscriber
+        $this->subscriber
             ->expects($this->once())
             ->method('onBar')
-            ->willReturnCallback(function () use ($that, &$onBarCalled, &$onBarOtherCalled) {
-                $that->assertFalse($onBarCalled);
-                $that->assertFalse($onBarOtherCalled);
+            ->willReturnCallback(function () use (&$onBarCalled, &$onBarOtherCalled) {
+                $this->assertFalse($onBarCalled);
+                $this->assertFalse($onBarOtherCalled);
 
                 $onBarCalled = true;
             });
 
-        $subscriber
+        $this->subscriber
             ->expects($this->once())
             ->method('onBazA')
-            ->willReturnCallback(function () use ($that, &$onBazACalled, &$onBazBCalled) {
-                $that->assertFalse($onBazACalled);
-                $that->assertTrue($onBazBCalled);
+            ->willReturnCallback(function () use (&$onBazACalled, &$onBazBCalled) {
+                $this->assertFalse($onBazACalled);
+                $this->assertTrue($onBazBCalled);
 
                 $onBazACalled = true;
             });
 
-        $subscriber
+        $this->subscriber
             ->expects($this->once())
             ->method('onBazB')
-            ->willReturnCallback(function () use ($that, &$onBazACalled, &$onBazBCalled) {
-                $that->assertFalse($onBazACalled);
-                $that->assertFalse($onBazBCalled);
+            ->willReturnCallback(function () use (&$onBazACalled, &$onBazBCalled) {
+                $this->assertFalse($onBazACalled);
+                $this->assertFalse($onBazBCalled);
 
                 $onBazBCalled = true;
             });
 
-        $emitter = new EventEmitter();
+        $this->emitter->on('bar', function () use (&$onBarCalled, &$onBarOtherCalled) {
+            $this->assertTrue($onBarCalled);
+            $this->assertFalse($onBarOtherCalled);
 
-        $emitter
-            ->on('bar', function () use ($that, &$onBarCalled, &$onBarOtherCalled) {
-                $that->assertTrue($onBarCalled);
-                $that->assertFalse($onBarOtherCalled);
+            $onBarOtherCalled = true;
+        });
+        
+        $this->subscriber->subscribeTo($this->emitter);
 
-                $onBarOtherCalled = true;
-            })
-            ->subscribe($subscriber);
+        $this->assertListenerCount(5);
 
-        $this->assertListenerCount($emitter, 5);
-
-        $emitter->emit('foo');
-        $emitter->emit('bar');
-        $emitter->emit('baz');
+        $this->emitter->emit('foo');
+        $this->emitter->emit('bar');
+        $this->emitter->emit('baz');
     }
 
-    public function testUnsubscribe()
+    function testUnsubscribe()
     {
-        $subscriber = $this->getSubscriberMock();
-
-        $subscriber
+        $this->subscriber
             ->expects($this->never())
             ->method('onFoo');
 
-        $subscriber
+        $this->subscriber
             ->expects($this->never())
             ->method('onBar');
 
-        $subscriber
+        $this->subscriber
             ->expects($this->never())
             ->method('onBazA');
 
-        $subscriber
+        $this->subscriber
             ->expects($this->never())
             ->method('onBazB');
 
-        $emitter = new EventEmitter();
+        $this->subscriber->subscribeTo($this->emitter);
 
-        $emitter->subscribe($subscriber);
+        $this->assertListenerCount(4);
 
-        $this->assertListenerCount($emitter, 4);
+        $this->subscriber->unsubscribeFrom($this->emitter);
 
-        $emitter->unsubscribe($subscriber);
+        $this->emitter->emit('foo');
+        $this->emitter->emit('bar');
+        $this->emitter->emit('baz');
 
-        $emitter->emit('foo');
-        $emitter->emit('bar');
-        $emitter->emit('baz');
-
-        $this->assertListenerCount($emitter, 0);
+        $this->assertListenerCount(0);
     }
 
-    /**
-     * @return EventSubscriberInterface
-     */
-    private function getSubscriberMock()
+    private function assertListenerCount(int $expected): void
     {
-        $subscriber = $this->getMock(
-            __NAMESPACE__ . '\\EventSubscriber',
-            array('getEvents', 'onFoo', 'onBar', 'onBazA', 'onBazB')
-        );
-
-        $subscriber
-            ->expects($this->any())
-            ->method('getEvents')
-            ->willReturn(array(
-                'foo' => 'onFoo',
-                'bar' => array('onBar', 5),
-                'baz' => array(
-                    array('onBazA'),
-                    array('onBazB', 10),
-                )
-            ));
-
-        return $subscriber;
-    }
-
-    /**
-     * @param EventEmitterInterface $emitter
-     * @param int                   $expected
-     */
-    private function assertListenerCount(EventEmitterInterface $emitter, $expected)
-    {
-        return $this->assertSame(
+        $this->assertSame(
             $expected,
-            array_sum(array_map('sizeof', $emitter->getListeners()))
+            array_sum(array_map('sizeof', $this->emitter->getListeners()))
         );
     }
+}
+
+/**
+ * @internal
+ */
+class TestEventSubscriber extends EventSubscriber
+{
+    protected function getListeners(): array
+    {
+        return [
+            $this->listen('foo', 'onFoo'),
+            $this->listen('bar', 'onBar', 5),
+            $this->listen('baz', 'onBazA'),
+            $this->listen('baz', 'onBazB', 10),
+        ];
+    }
+
+    function onFoo() {}
+    function onBar() {}
+    function onBazA() {}
+    function onBazB() {}
 }

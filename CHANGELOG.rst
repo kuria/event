@@ -1,6 +1,28 @@
 Changelog
 #########
 
+2.0.0
+*****
+
+- updated to PHP 7.1
+- simplified ``EventEmitter`` internals
+- optimized listener sorting in case all listeners have the same priority
+- the ``EventListener`` value object is now used for listener definitions instead of arrays
+- removed:
+
+  - ``EventEmitter::emitArray()``
+  - ``EventEmitter::subscribe()``
+  - ``EventEmitter::unsubscribe()``
+  - ``EventEmitter::once()``
+  - ``EventEmitterTrait``
+
+- added:
+
+  - ``Observable``
+  - ``ObservableTrait``
+  - ``ObservableInterface``
+
+
 1.0.1
 *****
 

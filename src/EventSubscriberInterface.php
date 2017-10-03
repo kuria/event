@@ -1,25 +1,16 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace Kuria\Event;
 
-/**
- * Event subscriber interface
- *
- * @author ShiraNai7 <shira.cz>
- */
 interface EventSubscriberInterface
 {
     /**
-     * Subscribe to the given event emitter
-     *
-     * @param EventEmitterInterface $emitter
+     * Subscribe to the given observable
      */
-    public function subscribeTo(EventEmitterInterface $emitter);
+    function subscribeTo(ObservableInterface $emitter): void;
 
     /**
-     * Unsubscribe from the given event emitter
-     *
-     * @param EventEmitterInterface $emitter
+     * Unsubscribe from the given observable
      */
-    public function unsubscribeFrom(EventEmitterInterface $emitter);
+    function unsubscribeFrom(ObservableInterface $emitter): void;
 }

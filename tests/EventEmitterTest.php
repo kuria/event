@@ -1,672 +1,684 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace Kuria\Event;
 
-class EventEmitterTest extends \PHPUnit_Framework_TestCase
+use PHPUnit\Framework\TestCase;
+
+class EventEmitterTest extends TestCase
 {
-    /**
-     * @return EventEmitterInterface
-     */
-    protected function createEventEmitter()
+    /** @var EventEmitterInterface */
+    private $emitter;
+
+    protected function setUp()
     {
-        return new EventEmitter();
+        TestCallbackWrapper::clear();
+
+        $this->emitter = new EventEmitter();
     }
 
-    public function testHasListeners()
+    function testHasListeners()
     {
-        $emitter = $this->createEventEmitter();
+        // check without any listeners
+        $this->assertFalse($this->emitter->hasListeners());
+        $this->assertFalse($this->emitter->hasListeners('foo'));
 
-        // check with no listeners
-        $this->assertFalse($emitter->hasListeners());
-        $this->assertFalse($emitter->hasListeners('foo'));
-        $this->assertFalse($emitter->hasListeners('foo', false));
-        $this->assertFalse($emitter->hasListeners(null, false));
+        // check with "foo" listener
+        $this->emitter->on('foo', $this->createTestCallback('foo'));
 
-        // check with some listener
-        $emitter->on('foo', 'test_a');
+        $this->assertTrue($this->emitter->hasListeners());
+        $this->assertTrue($this->emitter->hasListeners('foo'));
 
-        $this->assertTrue($emitter->hasListeners());
-        $this->assertTrue($emitter->hasListeners('foo'));
-        $this->assertTrue($emitter->hasListeners('foo', false));
-        $this->assertTrue($emitter->hasListeners(null, false));
+        // check event without any listeners
+        $this->assertFalse($this->emitter->hasListeners('bar'));
 
-        // check non-registered event without global listeners
-        $this->assertFalse($emitter->hasListeners('bar'));
+        // check event with a global listener
+        $this->emitter->on(EventEmitterInterface::ANY_EVENT, $this->createTestCallback('global'));
 
-        // check non-registered event with global listeners
-        $emitter->on('*', 'test_b');
-        
-        $this->assertTrue($emitter->hasListeners('bar'));
-        $this->assertFalse($emitter->hasListeners('bar', false));
+        $this->assertTrue($this->emitter->hasListeners('bar'));
     }
 
-    public function testGetListeners()
+    function testListeners()
     {
-        $emitter = $this->createEventEmitter();
+        $this->assertSame([], $this->emitter->getListeners());
+        $this->assertSame([], $this->emitter->getListeners('nonexistent'));
 
-        $this->assertSame(array(), $emitter->getListeners());
-        $this->assertSame(array(), $emitter->getListeners('nonexistent'));
+        $listenerA = $this->createTestListener('foo', 'a', null, 1);
+        $listenerB = $this->createTestListener('foo', 'b');
+        $listenerC = $this->createTestListener('bar', 'c', null, 1);
+        $listenerD = $this->createTestListener('bar', 'd');
 
-        $emitter
-            ->on('foo', 'test_a', 0)
-            ->on('foo', 'test_b', 5)
-            ->on('bar', 'test_c', 10)
-            ->on('bar', 'test_d', 15);
+        $this->emitter->addListener($listenerD);
+        $this->emitter->addListener($listenerC);
+        $this->emitter->addListener($listenerB);
+        $this->emitter->addListener($listenerA);
 
         $this->assertSame(
-            array('test_b', 'test_a'),
-            $emitter->getListeners('foo')
+            [$listenerA, $listenerB],
+            $this->emitter->getListeners('foo')
         );
 
         $this->assertSame(
-            array(
-                'foo' => array('test_b', 'test_a'),
-                'bar' => array('test_d', 'test_c'),
-            ),
-            $emitter->getListeners()
+            [$listenerC, $listenerD],
+            $this->emitter->getListeners('bar')
+        );
+
+        $this->assertSame(
+            [
+                'bar' => [$listenerC, $listenerD],
+                'foo' => [$listenerA,$listenerB],
+            ],
+            $this->emitter->getListeners()
         );
     }
 
-    public function testOn()
+    function testOn()
     {
-        $emitter = $this->createEventEmitter();
+        $callbackA = $this->createTestCallback('a');
+        $callbackB = $this->createTestCallback('b');
 
-        $listenerA = function () {};
-        $listenerB = function () {};
+        $this->emitter->on('foo', $callbackA);
+        $this->emitter->on('bar', $callbackA);
+        $this->emitter->on('bar', $callbackB, 5);
 
-        $emitter->on('foo', $listenerA);
-        $emitter->on('bar', $listenerA);
-        $emitter->on('bar', $listenerB, 5);
-
-        $this->assertListeners($emitter, array(
-            'foo' => array($listenerA),
-            'bar' => array($listenerB, $listenerA),
-        ));
+        $this->assertCallbacks([
+            'foo' => [$callbackA],
+            'bar' => [$callbackB, $callbackA],
+        ]);
     }
 
-    public function testOnce()
+    function testOff()
     {
-        $emitter = $this->createEventEmitter();
-
-        $listenerA = function () {};
-        $listenerB = function () {};
-
-        $emitter->once('foo', $listenerA);
-        $emitter->once('bar', $listenerA);
-        $emitter->once('bar', $listenerB, 5);
-
-        $this->assertListeners($emitter, array(
-            'foo' => array($listenerA),
-            'bar' => array($listenerB, $listenerA),
-        ));
-    }
-
-    public function testRemoveListener()
-    {
-        $emitter = $this->createEventEmitter();
-
-        $callStatus = array(
+        $callStatus = [
             'a' => false,
             'b' => false,
-            'ag' => false,
-            'bg' => false,
-        );
+            'global_a' => false,
+            'global_b' => false,
+        ];
 
-        $listenerA = function () use (&$callStatus) {
+        $callbackA = $this->createTestCallback('a', function () use (&$callStatus) {
             $callStatus['a'] = true;
-        };
-        $listenerB = function () use (&$callStatus) {
+        });
+        $callbackB = $this->createTestCallback('b', function () use (&$callStatus) {
             $callStatus['b'] = true;
-        };
-        $globalListenerA = function () use (&$callStatus) {
-            $callStatus['ga'] = true;
-        };
-        $globalListenerB = function () use (&$callStatus) {
-            $callStatus['gb'] = true;
-        };
+        });
+        $globalCallbackA = $this->createTestCallback('global_a', function () use (&$callStatus) {
+            $callStatus['global_a'] = true;
+        });
+        $globalCallbackB = $this->createTestCallback('global_b', function () use (&$callStatus) {
+            $callStatus['global_b'] = true;
+        });
+        $unusedCallback = $this->createTestCallback('unused');
 
-        $emitter
-            ->on('foo', $listenerA)
-            ->on('foo', $listenerA) // duplicate on purpose
-            ->on('bar', $listenerA, 1)
-            ->on('bar', $listenerB, 0)
-            ->on('*', $globalListenerA, 0)
-            ->on('*', $globalListenerB, 1);
+        $this->emitter->on('foo', $callbackA);
+        $this->emitter->on('foo', $callbackA); // duplicate on purpose
+        $this->emitter->on('bar', $callbackA, 1);
+        $this->emitter->on('bar', $callbackB, 0);
+        $this->emitter->on(EventEmitterInterface::ANY_EVENT, $globalCallbackA, 0);
+        $this->emitter->on(EventEmitterInterface::ANY_EVENT, $globalCallbackB, 1);
 
-        $this->assertListeners($emitter, array(
-            '*' => array($globalListenerB, $globalListenerA),
-            'foo' => array($listenerA, $listenerA),
-            'bar' => array($listenerA, $listenerB),
-        ));
+        $this->assertCallbacks([
+            'foo' => [$callbackA, $callbackA],
+            'bar' => [$callbackA, $callbackB],
+            EventEmitterInterface::ANY_EVENT => [$globalCallbackB, $globalCallbackA],
+        ]);
 
-        $emitter->removeListener('foo', $globalListenerA); // should have no effect
+        $this->assertFalse($this->emitter->off('foo', $globalCallbackA)); // should have no effect
+        $this->assertFalse($this->emitter->off('unused', $unusedCallback)); // should have no effect
 
-        $this->assertListeners($emitter, array(
-            '*' => array($globalListenerB, $globalListenerA),
-            'foo' => array($listenerA, $listenerA),
-            'bar' => array($listenerA, $listenerB),
-        ));
+        $this->assertCallbacks([
+            'foo' => [$callbackA, $callbackA],
+            'bar' => [$callbackA, $callbackB],
+            EventEmitterInterface::ANY_EVENT => [$globalCallbackB, $globalCallbackA],
+        ]);
 
-        $emitter->removeListener('foo', $listenerA);
+        $this->assertTrue($this->emitter->off('foo', $callbackA));
 
-        $this->assertListeners($emitter, array(
-            'foo' => array($listenerA),
-            'bar' => array($listenerA, $listenerB),
-        ));
+        $this->assertCallbacks([
+            'foo' => [$callbackA],
+            'bar' => [$callbackA, $callbackB],
+            EventEmitterInterface::ANY_EVENT => [$globalCallbackB, $globalCallbackA],
+        ]);
 
-        $emitter->removeListener('foo', $listenerA);
+        $this->assertTrue($this->emitter->off('foo', $callbackA));
 
-        $this->assertListeners($emitter, array(
-            '*' => array($globalListenerB, $globalListenerA),
-            'foo' => array(),
-            'bar' => array($listenerA, $listenerB),
-        ));
+        $this->assertCallbacks([
+            'foo' => [],
+            'bar' => [$callbackA, $callbackB],
+            EventEmitterInterface::ANY_EVENT => [$globalCallbackB, $globalCallbackA],
+        ]);
 
-        $emitter->removeListener('bar', $listenerB);
+        $this->assertTrue($this->emitter->off('bar', $callbackB));
 
-        $this->assertListeners($emitter, array(
-            '*' => array($globalListenerB, $globalListenerA),
-            'bar' => array($listenerA),
-        ));
+        $this->assertCallbacks([
+            'foo' => [],
+            'bar' => [$callbackA],
+            EventEmitterInterface::ANY_EVENT => [$globalCallbackB, $globalCallbackA],
+        ]);
 
-        $emitter->removeListener('bar', $listenerA);
+        $this->assertTrue($this->emitter->off('bar', $callbackA));
 
-        $this->assertListeners($emitter, array(
-            '*' => array($globalListenerB, $globalListenerA),
-        ));
+        $this->assertCallbacks([
+            'foo' => [],
+            'bar' => [],
+            EventEmitterInterface::ANY_EVENT => [$globalCallbackB, $globalCallbackA],
+        ]);
 
-        $emitter->removeListener('*', $globalListenerA);
+        $this->assertTrue($this->emitter->off(EventEmitterInterface::ANY_EVENT, $globalCallbackA));
 
-        $this->assertListeners($emitter, array(
-            '*' => array($globalListenerB),
-        ));
+        $this->assertCallbacks([
+            'foo' => [],
+            'bar' => [],
+            EventEmitterInterface::ANY_EVENT => [$globalCallbackB],
+        ]);
 
-        $emitter->removeListener('*', $globalListenerB);
+        $this->assertTrue($this->emitter->off(EventEmitterInterface::ANY_EVENT, $globalCallbackB));
 
-        $this->assertListeners($emitter, array());
+        $this->assertCallbacks([
+            'foo' => [],
+            'bar' => [],
+            EventEmitterInterface::ANY_EVENT => [],
+        ]);
 
-        $emitter->emit('foo');
-        $emitter->emitArray('foo', array());
-        $emitter->emit('bar');
-        $emitter->emitArray('bar', array());
+        $this->emitter->emit('foo');
+        $this->emitter->emit('bar');
 
-        $this->assertSame(array('a' => false, 'b' => false, 'ag' => false, 'bg' => false), $callStatus);
+        $this->assertSame(['a' => false, 'b' => false, 'global_a' => false, 'global_b' => false], $callStatus);
     }
 
-    public function testClearingListeners()
+    function testAddListener()
     {
-        $emitter = $this->createEventEmitter();
+        $fooListener = $this->createTestListener('foo');
+        $barListenerA = $this->createTestListener('bar', 'b');
+        $barListenerB = $this->createTestListener('bar', 'c');
 
-        $listenerA = function () {};
-        $listenerB = function () {};
-        $listenerC = function () {};
+        $this->emitter->addListener($fooListener);
+        $this->emitter->addListener($fooListener); // duplicate on purpose
+        $this->emitter->addListener($barListenerA);
+        $this->emitter->addListener($barListenerB);
 
-        $emitter
-            ->on('foo', $listenerA)
-            ->on('foo', $listenerA) // duplicate on purpose
-            ->on('bar', $listenerA, 3)
-            ->on('bar', $listenerB, 2)
-            ->on('bar', $listenerC, 1)
-            ->on('baz', $listenerB, 2)
-            ->on('baz', $listenerC, 1);
-
-        $this->assertListeners($emitter, array(
-            'foo' => array($listenerA, $listenerA),
-            'bar' => array($listenerA, $listenerB, $listenerC),
-            'baz' => array($listenerB, $listenerC),
-        ));
-
-        $emitter->clearListeners('bar');
-
-        $this->assertListeners($emitter, array(
-            'foo' => array($listenerA, $listenerA),
-            'bar' => array(),
-            'baz' => array($listenerB, $listenerC),
-        ));
-
-        $emitter->clearListeners();
-
-        $this->assertListeners($emitter, array(
-            'foo' => array(),
-            'bar' => array(),
-            'baz' => array(),
-        ));
+        $this->assertListeners([
+            'foo' => [$fooListener, $fooListener],
+            'bar' => [$barListenerA, $barListenerB],
+        ]);
     }
 
-    public function testSubscribe()
+    function testRemoveListener()
     {
-        $emitter = $this->createEventEmitter();
+        $expectedCallStatus = [
+            'foo_a' => false,
+            'bar_a' => false,
+            'bar_b' => false,
+            'baz' => false,
+            'global_a' => false,
+            'global-b' => false,
+        ];
 
-        $subscriber = $this->getMock(__NAMESPACE__ . '\EventSubscriberInterface');
+        $actualCallStatus = $expectedCallStatus;
 
-        $subscriber
-            ->expects($this->once())
-            ->method('subscribeTo');
+        $fooListenerA = $this->createTestListener('foo', 'a', function () use (&$actualCallStatus) {
+            $actualCallStatus['foo_a'] = true;
+        });
+        $barListenerA = $this->createTestListener('bar', 'a', function () use (&$actualCallStatus) {
+            $actualCallStatus['bar_a'] = true;
+        });
+        $barListenerB = $this->createTestListener('bar', 'b', function () use (&$actualCallStatus) {
+            $actualCallStatus['bar_b'] = true;
+        });
+        $bazListener = $this->createTestListener('baz', null, function () use (&$actualCallStatus) {
+            $actualCallStatus['baz'] = true;
+        });
+        $globalListenerA = $this->createTestListener(EventEmitterInterface::ANY_EVENT, 'global_a', function () use (&$actualCallStatus) {
+            $actualCallStatus['global_a'] = true;
+        });
+        $globalListenerB = $this->createTestListener(EventEmitterInterface::ANY_EVENT, 'global_b', function () use (&$actualCallStatus) {
+            $actualCallStatus['global_b'] = true;
+        }, 1);
+        $unusedListener = $this->createTestListener('unused');
 
-        $emitter->subscribe($subscriber);
+        $this->emitter->addListener($fooListenerA);
+        $this->emitter->addListener($fooListenerA); // duplicate on purpose
+        $this->emitter->addListener($barListenerA);
+        $this->emitter->addListener($barListenerB);
+        $this->emitter->addListener($bazListener);
+        $this->emitter->addListener($globalListenerA);
+        $this->emitter->addListener($globalListenerB);
+
+        $this->assertListeners([
+            'foo' => [$fooListenerA, $fooListenerA],
+            'bar' => [$barListenerA, $barListenerB],
+            'baz' => [$bazListener],
+            EventEmitterInterface::ANY_EVENT => [$globalListenerB, $globalListenerA],
+        ]);
+
+        $this->assertFalse($this->emitter->removeListener($unusedListener)); // should have no effect
+
+        $this->assertListeners([
+            'foo' => [$fooListenerA, $fooListenerA],
+            'bar' => [$barListenerA, $barListenerB],
+            'baz' => [$bazListener],
+            EventEmitterInterface::ANY_EVENT => [$globalListenerB, $globalListenerA],
+        ]);
+
+        $this->assertTrue($this->emitter->removeListener($fooListenerA));
+
+        $this->assertListeners([
+            'foo' => [$fooListenerA],
+            'bar' => [$barListenerA, $barListenerB],
+            'baz' => [$bazListener],
+            EventEmitterInterface::ANY_EVENT => [$globalListenerB, $globalListenerA],
+        ]);
+
+        $this->assertTrue($this->emitter->removeListener($fooListenerA));
+
+        $this->assertListeners([
+            'foo' => [],
+            'bar' => [$barListenerA, $barListenerB],
+            'baz' => [$bazListener],
+            EventEmitterInterface::ANY_EVENT => [$globalListenerB, $globalListenerA],
+        ]);
+
+        $this->assertTrue($this->emitter->removeListener($barListenerA));
+
+        $this->assertListeners([
+            'foo' => [],
+            'bar' => [$barListenerB],
+            'baz' => [$bazListener],
+            EventEmitterInterface::ANY_EVENT => [$globalListenerB, $globalListenerA],
+        ]);
+
+        $this->assertTrue($this->emitter->removeListener($barListenerB));
+
+        $this->assertListeners([
+            'foo' => [],
+            'bar' => [],
+            'baz' => [$bazListener],
+            EventEmitterInterface::ANY_EVENT => [$globalListenerB, $globalListenerA],
+        ]);
+
+        $this->assertTrue($this->emitter->removeListener($bazListener));
+
+        $this->assertListeners([
+            'foo' => [],
+            'bar' => [],
+            'baz' => [],
+            EventEmitterInterface::ANY_EVENT => [$globalListenerB, $globalListenerA],
+        ]);
+
+        $this->assertTrue($this->emitter->removeListener($globalListenerA));
+
+        $this->assertListeners([
+            'foo' => [],
+            'bar' => [],
+            'baz' => [],
+            EventEmitterInterface::ANY_EVENT => [$globalListenerB],
+        ]);
+
+        $this->assertTrue($this->emitter->removeListener($globalListenerB));
+
+        $this->assertListeners([
+            'foo' => [],
+            'bar' => [],
+            'baz' => [],
+            EventEmitterInterface::ANY_EVENT => [],
+        ]);
+
+        $this->emitter->emit('foo');
+        $this->emitter->emit('bar');
+        $this->emitter->emit('baz');
+
+        $this->assertSame($expectedCallStatus, $actualCallStatus);
     }
 
-    public function testUnsubscribe()
+    function testClearingListeners()
     {
-        $emitter = $this->createEventEmitter();
+        $callbackA = $this->createTestCallback('a');
+        $callbackB = $this->createTestCallback('b');
+        $callbackC = $this->createTestCallback('c');
 
-        $subscriber = $this->getMock(__NAMESPACE__ . '\EventSubscriberInterface');
+        $this->emitter->on('foo', $callbackA);
+        $this->emitter->on('foo', $callbackA); // duplicate on purpose
+        $this->emitter->on('bar', $callbackA, 3);
+        $this->emitter->on('bar', $callbackB, 2);
+        $this->emitter->on('bar', $callbackC, 1);
+        $this->emitter->on('baz', $callbackB, 2);
+        $this->emitter->on('baz', $callbackC, 1);
 
-        $subscriber
-            ->expects($this->once())
-            ->method('unsubscribeFrom');
+        $this->assertCallbacks([
+            'foo' => [$callbackA, $callbackA],
+            'bar' => [$callbackA, $callbackB, $callbackC],
+            'baz' => [$callbackB, $callbackC],
+        ]);
 
-        $emitter->unsubscribe($subscriber);
+        $this->emitter->clearListeners('bar');
+
+        $this->assertCallbacks([
+            'foo' => [$callbackA, $callbackA],
+            'bar' => [],
+            'baz' => [$callbackB, $callbackC],
+        ]);
+
+        $this->emitter->clearListeners();
+
+        $this->assertCallbacks([
+            'foo' => [],
+            'bar' => [],
+            'baz' => [],
+        ]);
     }
 
-    public function testEmit()
+    function testEmit()
     {
-        $this->doTestEmit($this->createEmitMethodCaller());
-    }
-
-    public function testEmitArray()
-    {
-        $this->doTestEmit($this->createEmitArrayMethodCaller());
-    }
-
-    /**
-     * @param callable $emitMethodCaller
-     */
-    public function doTestEmit($emitMethodCaller)
-    {
-        $that = $this;
-
-        $emitter = $this->createEventEmitter();
-
-        $listenerCallCounters = array(
+        $callbackCallCounters = [
             'a' => 0,
             'b' => 0,
-            'ga' => 0,
-            'gb' => 0,
-        );
+            'global_a' => 0,
+            'global_b' => 0,
+        ];
 
-        $listenerA = function ($arg1, $arg2) use ($that, &$listenerCallCounters) {
-            $that->assertSame('hello', $arg1);
-            $that->assertSame(123, $arg2);
+        $callbackA = $this->createTestCallback('a', function ($arg1, $arg2) use (&$callbackCallCounters) {
+            $this->assertSame('hello', $arg1);
+            $this->assertSame(123, $arg2);
 
-            ++$listenerCallCounters['a'];
-        };
+            ++$callbackCallCounters['a'];
+        });
 
-        $listenerB = function ($arg1, $arg2) use ($that, &$listenerCallCounters) {
-            $that->assertSame('hello', $arg1);
-            $that->assertSame(123, $arg2);
+        $callbackB = $this->createTestCallback('b', function ($arg1, $arg2) use (&$callbackCallCounters) {
+            $this->assertSame('hello', $arg1);
+            $this->assertSame(123, $arg2);
 
-            ++$listenerCallCounters['b'];
-        };
+            ++$callbackCallCounters['b'];
+        });
 
-        $globalListenerA = function ($event, $arg1, $arg2) use ($that, &$listenerCallCounters) {
-            $that->assertTrue(in_array($event, array('foo', 'bar'), true));
-            $that->assertSame('hello', $arg1);
-            $that->assertSame(123, $arg2);
+        $globalCallbackA = $this->createTestCallback('global_a', function ($event, $arg1, $arg2) use (&$callbackCallCounters) {
+            $this->assertTrue(in_array($event, ['foo', 'bar'], true));
+            $this->assertSame('hello', $arg1);
+            $this->assertSame(123, $arg2);
 
-            ++$listenerCallCounters['ga'];
-        };
+            ++$callbackCallCounters['global_a'];
+        });
 
-        $globalListenerB = function ($event, $arg1, $arg2) use ($that, &$listenerCallCounters) {
-            $that->assertTrue(in_array($event, array('foo', 'bar'), true));
-            $that->assertSame('hello', $arg1);
-            $that->assertSame(123, $arg2);
+        $globalCallbackB = $this->createTestCallback('global_b', function ($event, $arg1, $arg2) use (&$callbackCallCounters) {
+            $this->assertTrue(in_array($event, ['foo', 'bar'], true));
+            $this->assertSame('hello', $arg1);
+            $this->assertSame(123, $arg2);
 
-            ++$listenerCallCounters['gb'];
-        };
+            ++$callbackCallCounters['global_b'];
+        });
 
-        $emitter
-            ->on('foo', $listenerA)
-            ->on('foo', $listenerB)
-            ->on('*', $globalListenerA)
-            ->on('*', $globalListenerB);
+        $this->emitter->on('foo', $callbackA);
+        $this->emitter->on('foo', $callbackB);
+        $this->emitter->on(EventEmitterInterface::ANY_EVENT, $globalCallbackA);
+        $this->emitter->on(EventEmitterInterface::ANY_EVENT, $globalCallbackB);
 
         // emit the event twice
-        for ($i = 0; $i < 2; ++$i) {
-            $emitMethodCaller($emitter, 'foo', array('hello', 123));
-        }
+        $this->emitter->emit('foo', 'hello', 123);
+        $this->emitter->emit('foo', 'hello', 123);
 
         // emitting events that have no specific listeners should call the global ones
-        $emitMethodCaller($emitter, 'bar', array('hello', 123));
+        $this->emitter->emit('bar', 'hello', 123);
 
         // the listeners should be called twice
-        $this->assertSame(2, $listenerCallCounters['a']);
-        $this->assertSame(2, $listenerCallCounters['b']);
+        $this->assertSame(2, $callbackCallCounters['a']);
+        $this->assertSame(2, $callbackCallCounters['b']);
 
         // global listeners should be called twice + once for the "bar" event
-        $this->assertSame(3, $listenerCallCounters['ga']);
-        $this->assertSame(3, $listenerCallCounters['gb']);
-    }
-    
-    public function testEmitWithOnceListeners()
-    {
-        $this->doTestEmitWithOnceListeners($this->createEmitMethodCaller());
-    }
-    
-    public function testEmitArrayWithOnceListeners()
-    {
-        $this->doTestEmitWithOnceListeners($this->createEmitArrayMethodCaller());
+        $this->assertSame(3, $callbackCallCounters['global_a']);
+        $this->assertSame(3, $callbackCallCounters['global_b']);
     }
 
-    /**
-     * @param callable $emitMethodCaller
-     */
-    public function doTestEmitWithOnceListeners($emitMethodCaller)
+    function testEmitPriority()
     {
-        $that = $this;
-
-        $emitter = $this->createEventEmitter();
-
-        $listenerCallCounters = array(
-            'a' => 0,
-            'b' => 0,
-            'ga' => 0,
-            'gb' => 0,
-        );
-
-        $listenerA = function ($arg1, $arg2) use ($that, &$listenerCallCounters) {
-            $that->assertSame('hello', $arg1);
-            $that->assertSame(123, $arg2);
-
-            ++$listenerCallCounters['a'];
-        };
-
-        $listenerB = function ($arg1, $arg2) use ($that, &$listenerCallCounters) {
-            $that->assertSame('hello', $arg1);
-            $that->assertSame(123, $arg2);
-
-            ++$listenerCallCounters['b'];
-        };
-
-        $globalListenerA = function ($event, $arg1, $arg2) use ($that, &$listenerCallCounters) {
-            $that->assertSame('foo', $event);
-            $that->assertSame('hello', $arg1);
-            $that->assertSame(123, $arg2);
-
-            ++$listenerCallCounters['ga'];
-        };
-
-        $globalListenerB = function ($event, $arg1, $arg2) use ($that, &$listenerCallCounters) {
-            $that->assertSame('foo', $event);
-            $that->assertSame('hello', $arg1);
-            $that->assertSame(123, $arg2);
-            
-            ++$listenerCallCounters['gb'];
-        };
-
-        $emitter
-            ->once('foo', $listenerA)
-            ->once('foo', $listenerB)
-            ->once('*', $globalListenerA)
-            ->once('*', $globalListenerB);
-
-        // emit the event twice
-        $emitMethodCaller($emitter, 'foo', array('hello', 123));
-        $emitMethodCaller($emitter, 'foo', array('hello', 123));
-
-        // the listeners should be called just once
-        $this->assertSame(array('a' => 1, 'b' => 1, 'ga' => 1, 'gb' => 1), $listenerCallCounters);
-    }
-
-    public function testEmitArrayReference()
-    {
-        $emitter = $this->createEventEmitter();
-
-        $referencedVariable = 0;
-
-        $listener = function (&$arg) {
-            ++$arg;
-        };
-
-        $globalListener = function ($event, &$arg) {
-            ++$arg;
-        };
-
-        $emitter
-            ->on('foo', $listener)
-            ->on('*', $globalListener);
-
-        $emitter->emitArray('foo', array(&$referencedVariable));
-
-        $this->assertSame(2, $referencedVariable);
-    }
-
-    public function testEmitPriority()
-    {
-        $this->doTestEmitPriority($this->createEmitMethodCaller());
-    }
-
-    public function testEmitArrayPriority()
-    {
-        $this->doTestEmitPriority($this->createEmitArrayMethodCaller());
-    }
-    
-    /**
-     * @param callable $emitMethodCaller
-     */
-    private function doTestEmitPriority($emitMethodCaller)
-    {
-        $that = $this;
-
-        $emitter = $this->createEventEmitter();
-
-        $callStatus = array(
+        $callStatus = [
             'a' => false,
             'b' => false,
             'c' => false,
-            'ga' => false,
-            'gb' => false,
-            'gc' => false,
-        );
+            'global_a' => false,
+            'global_b' => false,
+            'global_c' => false,
+        ];
 
-        $listenerA = function () use ($that, &$callStatus) {
-            $that->assertSame(
-                array('a' => false, 'b' => true, 'c' => true, 'ga' => true, 'gb' => true, 'gc' => true),
+        $callbackA = $this->createTestCallback('a', function () use (&$callStatus) {
+            $this->assertSame(
+                ['a' => false, 'b' => true, 'c' => true, 'global_a' => true, 'global_b' => true, 'global_c' => true],
                 $callStatus
             );
 
             $callStatus['a'] = true;
-        };
+        });
 
-        $listenerB = function () use ($that, &$callStatus) {
-            $that->assertSame(
-                array('a' => false, 'b' => false, 'c' => false, 'ga' => true, 'gb' => true, 'gc' => true),
+        $callbackB = $this->createTestCallback('b', function () use (&$callStatus) {
+            $this->assertSame(
+                ['a' => false, 'b' => false, 'c' => false, 'global_a' => true, 'global_b' => true, 'global_c' => true],
                 $callStatus
             );
 
             $callStatus['b'] = true;
-        };
+        });
 
-        $listenerC = function () use ($that, &$callStatus) {
-            $that->assertSame(
-                array('a' => false, 'b' => true, 'c' => false, 'ga' => true, 'gb' => true, 'gc' => true),
+        $callbackC = $this->createTestCallback('c', function () use (&$callStatus) {
+            $this->assertSame(
+                ['a' => false, 'b' => true, 'c' => false, 'global_a' => true, 'global_b' => true, 'global_c' => true],
                 $callStatus
             );
 
             $callStatus['c'] = true;
-        };
+        });
 
-        $globalListenerA = function () use ($that, &$callStatus) {
-            $that->assertSame(
-                array('a' => false, 'b' => false, 'c' => false, 'ga' => false, 'gb' => true, 'gc' => true),
+        $globalCallbackA = $this->createTestCallback('global_a', function () use (&$callStatus) {
+            $this->assertSame(
+                ['a' => false, 'b' => false, 'c' => false, 'global_a' => false, 'global_b' => true, 'global_c' => true],
                 $callStatus
             );
 
-            $callStatus['ga'] = true;
-        };
+            $callStatus['global_a'] = true;
+        });
 
-        $globalListenerB = function () use ($that, &$callStatus) {
-            $that->assertSame(
-                array('a' => false, 'b' => false, 'c' => false, 'ga' => false, 'gb' => false, 'gc' => false),
+        $globalCallbackB = $this->createTestCallback('global_b', function () use (&$callStatus) {
+            $this->assertSame(
+                ['a' => false, 'b' => false, 'c' => false, 'global_a' => false, 'global_b' => false, 'global_c' => false],
                 $callStatus
             );
 
-            $callStatus['gb'] = true;
-        };
+            $callStatus['global_b'] = true;
+        });
 
-        $globalListenerC = function () use ($that, &$callStatus) {
-            $that->assertSame(
-                array('a' => false, 'b' => false, 'c' => false, 'ga' => false, 'gb' => true, 'gc' => false),
+        $globalCallbackC = $this->createTestCallback('global_c', function () use (&$callStatus) {
+            $this->assertSame(
+                ['a' => false, 'b' => false, 'c' => false, 'global_a' => false, 'global_b' => true, 'global_c' => false],
                 $callStatus
             );
 
-            $callStatus['gc'] = true;
-        };
+            $callStatus['global_c'] = true;
+        });
 
         // priority order: B, C, A
-        $emitter
-            ->on('foo', $listenerA, -1)
-            ->on('foo', $listenerB, 1)
-            ->on('foo', $listenerC)
-            ->on('*', $globalListenerA, -1)
-            ->on('*', $globalListenerB, 1)
-            ->on('*', $globalListenerC);
+        $this->emitter->on('foo', $callbackA, -1);
+        $this->emitter->on('foo', $callbackB, 1);
+        $this->emitter->on('foo', $callbackC);
+        $this->emitter->on(EventEmitterInterface::ANY_EVENT, $globalCallbackA, -1);
+        $this->emitter->on(EventEmitterInterface::ANY_EVENT, $globalCallbackB, 1);
+        $this->emitter->on(EventEmitterInterface::ANY_EVENT, $globalCallbackC);
 
-        $emitMethodCaller($emitter, 'foo');
+        $this->emitter->emit('foo');
 
         $this->assertSame(
-            array('a' => true, 'b' => true, 'c' => true, 'ga' => true, 'gb' => true, 'gc' => true),
+            ['a' => true, 'b' => true, 'c' => true, 'global_a' => true, 'global_b' => true, 'global_c' => true],
             $callStatus
         );
     }
 
-    public function testEmitStoppingPropagation()
+    function testStoppingPropagation()
     {
-        $this->doTestStoppingPropagation($this->createEmitMethodCaller());
-    }
+        $callbackACalled = false;
+        $callbackBCalled = false;
 
-    public function testEmitArrayStoppingPropagation()
-    {
-        $this->doTestStoppingPropagation($this->createEmitArrayMethodCaller());
-    }
-
-    /**
-     * @param callable $emitMethodCaller
-     */
-    private function doTestStoppingPropagation($emitMethodCaller)
-    {
-        $emitter = $this->createEventEmitter();
-
-        $listenerACalled = false;
-        $listenerBCalled = false;
-
-        $listenerA = function () use (&$listenerACalled) {
-            $listenerACalled = true;
+        $callbackA = $this->createTestCallback('a', function () use (&$callbackACalled) {
+            $callbackACalled = true;
 
             return false;
-        };
+        });
 
-        $listenerB = function () use (&$listenerBCalled) {
-            $listenerBCalled = true;
-        };
+        $callbackB = $this->createTestCallback('b', function () use (&$callbackBCalled) {
+            $callbackBCalled = true;
+        });
 
-        $emitter
-            ->on('foo', $listenerA, 1)
-            ->on('foo', $listenerB, 0);
+        $this->emitter->on('foo', $callbackA, 1);
+        $this->emitter->on('foo', $callbackB, 0);
 
-        $emitMethodCaller($emitter, 'foo');
+        $this->emitter->emit('foo');
 
-        $this->assertTrue($listenerACalled);
-        $this->assertFalse($listenerBCalled);
-    }
-    
-    public function testEmitStoppingPropagationGlobal()
-    {
-        $this->doTestStoppingPropagationGlobal($this->createEmitMethodCaller());
+        $this->assertTrue($callbackACalled);
+        $this->assertFalse($callbackBCalled);
     }
 
-    public function testEmitArrayStoppingPropagationGlobal()
+    function testStoppingPropagationGlobal()
     {
-        $this->doTestStoppingPropagationGlobal($this->createEmitArrayMethodCaller());
-    }
-
-    /**
-     * @param callable $emitMethodCaller
-     */
-    private function doTestStoppingPropagationGlobal($emitMethodCaller)
-    {
-        $emitter = $this->createEventEmitter();
-
-        $callStatus = array(
+        $callStatus = [
             'a' => false,
-            'ga' => false,
-            'gb' => false,
-        );
+            'global_a' => false,
+            'global_b' => false,
+        ];
 
-        $listenerA = function () use (&$callStatus) {
+        $callbackA = $this->createTestCallback('a', function () use (&$callStatus) {
             $callStatus['a'] = true;
-        };
+        });
 
-        $globalListenerA = function () use (&$callStatus) {
-            $callStatus['ga'] = true;
+        $globalCallbackA = $this->createTestCallback('global_a', function () use (&$callStatus) {
+            $callStatus['global_a'] = true;
 
             return false;
-        };
+        });
 
-        $globalListenerB = function () use (&$callStatus) {
-            $callStatus['gb'] = true;
-        };
+        $globalCallbackB = $this->createTestCallback('global_b', function () use (&$callStatus) {
+            $callStatus['global_b'] = true;
+        });
 
-        $emitter
-            ->on('foo', $listenerA)
-            ->on('*', $globalListenerA, 1)
-            ->on('*', $globalListenerB, 0);
+        $this->emitter->on('foo', $callbackA);
+        $this->emitter->on(EventEmitterInterface::ANY_EVENT, $globalCallbackA, 1);
+        $this->emitter->on(EventEmitterInterface::ANY_EVENT, $globalCallbackB, 0);
 
-        $emitMethodCaller($emitter, 'foo');
+        $this->emitter->emit('foo');
 
         $this->assertSame(
-            array('a' => false, 'ga' => true, 'gb' => false),
+            ['a' => false, 'global_a' => true, 'global_b' => false],
             $callStatus
         );
     }
 
-    /**
-     * @return callable
-     */
-    private function createEmitMethodCaller()
+    private function createTestCallback(string $name, ?callable $callback = null): callable
     {
-        return function (EventEmitterInterface $emitter, $event, array $args = array()) {
-            return call_user_func_array(array($emitter, 'emit'), array_merge(array($event), $args));
-        };
+        if ($callback === null) {
+            $callback = function () {};
+        }
+
+        return TestCallbackWrapper::wrap("callback_{$name}", $callback);
     }
 
-    /**
-     * @return callable
-     */
-    private function createEmitArrayMethodCaller()
+    private function createTestListener(string $event, ?string $name = null, ?callable $callback = null, int $priority = 0): EventListener
     {
-        return function (EventEmitterInterface $emitter, $event, array $args = array()) {
-            return $emitter->emitArray($event, $args);
-        };
+        if ($callback === null) {
+            $callback = function () {};
+        }
+
+        $callbackName = "{$event}_listener";
+
+        if ($name !== null) {
+            $callbackName .= "_{$name}";
+        }
+
+        return new EventListener($event, TestCallbackWrapper::wrap($callbackName, $callback), $priority);
     }
 
-    /**
-     * Assert listener map
-     *
-     * @param EventEmitterInterface $emitter
-     * @param array                 $expected
-     */
-    private function assertListeners(EventEmitterInterface $emitter, array $expected)
+    private function assertCallbacks(array $expectedCallbacks): void
     {
-        $shouldHaveSomeListeners = false;
-        $actualListeners = $emitter->getListeners();
+        $actualListeners = $this->emitter->getListeners();
+        $hasGlobalListeners = !empty($actualListeners[EventEmitterInterface::ANY_EVENT]);
+        $shouldHaveSomeListeners = $hasGlobalListeners;
 
-        foreach ($expected as $event => $expectedListeners) {
-            if ($expectedListeners) {
+        foreach ($expectedCallbacks as $event => $expectedEventCallbacks) {
+            if ($expectedEventCallbacks) {
                 $shouldHaveSomeListeners = true;
 
-                $this->assertTrue($emitter->hasListeners($event, false));
-                $this->assertArrayHasKey($event, $actualListeners);
-                $this->assertSame($expectedListeners, $actualListeners[$event]);
-                $this->assertSame($expectedListeners, $emitter->getListeners($event));
+                foreach ($expectedEventCallbacks as $callback) {
+                    $this->assertTrue($this->emitter->hasCallback($event, $callback), sprintf('hasCallback("%s", "%s") should return TRUE', $event, $callback));
+                }
 
+                $this->assertTrue($this->emitter->hasListeners($event), sprintf('hasListeners("%s") should return TRUE', $event));
+                $this->assertArrayHasKey($event, $actualListeners, sprintf('the "%s" event key should exist in output of listeners()', $event));
+                $this->assertSame($expectedEventCallbacks, array_column($actualListeners[$event], 'callback'), sprintf('callbacks from listeners()["%s"] should match the expected callbacks', $event));
+                $this->assertSame($expectedEventCallbacks, array_column($this->emitter->getListeners($event), 'callback'), sprintf('callbacks from listeners("%s") should match the expected callbacks', $event));
             } else {
-                $this->assertFalse($emitter->hasListeners($event, false));
-                $this->assertArrayNotHasKey($event, $actualListeners);
-                $this->assertSame(array(), $emitter->getListeners($event));
+                $this->assertSame($hasGlobalListeners, $this->emitter->hasListeners($event), sprintf('hasListeners("%s") should return %s', $event, $hasGlobalListeners ? 'TRUE' : 'FALSE'));
+                $this->assertArrayNotHasKey($event, $actualListeners, sprintf('the "%s" event key should not exist in output of listeners()', $event));
+                $this->assertSame([], $this->emitter->getListeners($event), sprintf('listeners("%s") should yield an empty array', $event));
             }
         }
 
-        $this->assertSame($shouldHaveSomeListeners, $emitter->hasListeners());
+        $unexpectedCallbacks = array_keys(array_diff_key($actualListeners, $expectedCallbacks));
+        $this->assertEmpty($unexpectedCallbacks, sprintf('Unexpected event callbacks registered for events: %s', implode(', ', $unexpectedCallbacks)));
+
+        $this->assertSame($shouldHaveSomeListeners, $this->emitter->hasListeners(), sprintf('hasListeners() should return %s', $shouldHaveSomeListeners ? 'TRUE' : 'FALSE'));
+    }
+
+    private function assertListeners(array $expectedListeners): void
+    {
+        $actualListeners = $this->emitter->getListeners();
+        $hasGlobalListeners = !empty($actualListeners[EventEmitterInterface::ANY_EVENT]);
+        $shouldHaveSomeListeners = $hasGlobalListeners;
+
+        foreach ($expectedListeners as $event => $expectedEventListeners) {
+            if ($expectedEventListeners) {
+                $shouldHaveSomeListeners = true;
+
+                foreach ($expectedEventListeners as $listener) {
+                    $this->assertTrue($this->emitter->hasListener($listener), sprintf('hasListener() with listener for event "%s" should return TRUE', $event));
+                }
+
+                $this->assertTrue($this->emitter->hasListeners($event), sprintf('hasListeners("%s") should return TRUE', $event));
+                $this->assertArrayHasKey($event, $actualListeners, sprintf('The "%s" event key should exist in output of listeners()', $event));
+                $this->assertSame($expectedEventListeners, $actualListeners[$event], sprintf('Listeners from listeners()["%s"] should match the expected listeners', $event));
+                $this->assertSame($expectedEventListeners, $this->emitter->getListeners($event), sprintf('Listeners from listeners("%s") should match the expected listeners', $event));
+            } else {
+                $this->assertSame($hasGlobalListeners, $this->emitter->hasListeners($event), sprintf('hasListeners("%s") should return %s', $event, $hasGlobalListeners ? 'TRUE' : 'FALSE'));
+                $this->assertArrayNotHasKey($event, $actualListeners, sprintf('The "%s" event key should not exist in output of listeners()', $event));
+                $this->assertSame([], $this->emitter->getListeners($event), sprintf('listeners("%s") should yield an empty array', $event));
+            }
+        }
+
+        $unexpectedListeners = array_keys(array_diff_key($actualListeners, $expectedListeners));
+        $this->assertEmpty($unexpectedListeners, sprintf('Unexpected event listeners registered for events: %s', implode(', ', $unexpectedListeners)));
+
+        $this->assertSame($shouldHaveSomeListeners, $this->emitter->hasListeners(), sprintf('hasListeners() should return %s', $shouldHaveSomeListeners ? 'TRUE' : 'FALSE'));
+    }
+}
+
+/**
+ * Wraps test callbacks to make them more readable in assertion errors
+ *
+ * @internal
+ */
+class TestCallbackWrapper
+{
+    private static $methods;
+
+    static function wrap(string $readableMethodName, $callback): callable
+    {
+        static::$methods[$readableMethodName] = $callback;
+
+        return static::class . '::' . $readableMethodName;
+    }
+
+    static function clear(): void
+    {
+        static::$methods = [];
+    }
+
+    static function __callStatic(string $name, array $args)
+    {
+        if (!isset(static::$methods[$name])) {
+            throw new \BadMethodCallException(sprintf('Undefined method "%s::%s"', static::class, $name));
+        }
+
+        return (static::$methods[$name])(...$args);
     }
 }
