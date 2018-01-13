@@ -1,13 +1,13 @@
 {
     "name": "kuria/event",
-    "description": "Event library that implements variations of the mediator and observer patterns.",
+    "description": "Event library that implements variations of the mediator and observer patterns",
     "keywords": ["event", "listener", "emitter", "dispatcher", "mediator", "observer", "observable", "subscriber"],
     "license": "MIT",
     "require": {
-        "php": ">=7.1.0"
+        "php": ">=7.1"
     },
     "require-dev": {
-        "phpunit/phpunit": "^6.2"
+        "phpunit/phpunit": "^6.5"
     },
     "autoload": {
         "psr-4": {
