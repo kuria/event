@@ -3,14 +3,15 @@
 namespace Kuria\Event;
 
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\MockObject\MockObject;
 
 class ObservableTest extends TestCase
 {
     function testObservableInterface()
     {
-        /** @var EventEmitter|\PHPUnit_Framework_MockObject_MockObject $eventEmitterSpy */
+        /** @var EventEmitter|MockObject $eventEmitterSpy */
         $eventEmitterSpy = $this->createTestProxy(EventEmitter::class);
-        /** @var Observable|\PHPUnit_Framework_MockObject_MockObject $observable */
+        /** @var Observable|MockObject $observable */
         $observable = $this->createPartialMock(Observable::class, ['createEventEmitter']);
         $observable->method('createEventEmitter')->willReturn($eventEmitterSpy);
 
@@ -50,7 +51,7 @@ class ObservableTest extends TestCase
 
     function testLazyEmit()
     {
-        /** @var Observable|\PHPUnit_Framework_MockObject_MockObject $observable */
+        /** @var Observable|MockObject $observable */
         $observable = $this->createPartialMock(Observable::class, ['createEventEmitter']);
         $observable->expects($this->never())->method('createEventEmitter');
 

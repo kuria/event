@@ -3,12 +3,13 @@
 namespace Kuria\Event;
 
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\MockObject\MockObject;
 
 class EventSubscriberTest extends TestCase
 {
     /** @var EventEmitter */
     private $emitter;
-    /** @var TestEventSubscriber|\PHPUnit_Framework_MockObject_MockObject */
+    /** @var TestEventSubscriber|MockObject */
     private $subscriber;
 
     protected function setUp()
