@@ -70,7 +70,7 @@ class EventSubscriberTest extends TestCase
 
             $onBarOtherCalled = true;
         });
-        
+
         $this->subscriber->subscribeTo($this->emitter);
 
         $this->assertListenerCount(5);
@@ -135,8 +135,19 @@ class TestEventSubscriber extends EventSubscriber
         ];
     }
 
-    function onFoo() {}
-    function onBar() {}
-    function onBazA() {}
-    function onBazB() {}
+    function onFoo()
+    {
+    }
+
+    function onBar()
+    {
+    }
+
+    function onBazA()
+    {
+    }
+
+    function onBazB()
+    {
+    }
 }

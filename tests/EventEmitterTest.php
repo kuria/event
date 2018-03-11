@@ -428,6 +428,7 @@ class EventEmitterTest extends TestCase
 
     function testEmitPriority()
     {
+        /** @var bool[] $callStatus */
         $callStatus = [
             'a' => false,
             'b' => false,
@@ -600,24 +601,62 @@ class EventEmitterTest extends TestCase
                 $shouldHaveSomeListeners = true;
 
                 foreach ($expectedEventCallbacks as $callback) {
-                    $this->assertTrue($this->emitter->hasCallback($event, $callback), sprintf('hasCallback("%s", "%s") should return TRUE', $event, $callback));
+                    $this->assertTrue(
+                        $this->emitter->hasCallback($event, $callback),
+                        sprintf('hasCallback("%s", "%s") should return TRUE', $event, $callback)
+                    );
                 }
 
-                $this->assertTrue($this->emitter->hasListeners($event), sprintf('hasListeners("%s") should return TRUE', $event));
-                $this->assertArrayHasKey($event, $actualListeners, sprintf('the "%s" event key should exist in output of listeners()', $event));
-                $this->assertSame($expectedEventCallbacks, array_column($actualListeners[$event], 'callback'), sprintf('callbacks from listeners()["%s"] should match the expected callbacks', $event));
-                $this->assertSame($expectedEventCallbacks, array_column($this->emitter->getListeners($event), 'callback'), sprintf('callbacks from listeners("%s") should match the expected callbacks', $event));
+                $this->assertTrue(
+                    $this->emitter->hasListeners($event),
+                    sprintf('hasListeners("%s") should return TRUE', $event)
+                );
+                $this->assertArrayHasKey(
+                    $event,
+                    $actualListeners,
+                    sprintf('the "%s" event key should exist in output of listeners()', $event)
+                );
+                $this->assertSame(
+                    $expectedEventCallbacks,
+                    array_column($actualListeners[$event], 'callback'),
+                    sprintf('callbacks from listeners()["%s"] should match the expected callbacks', $event)
+                );
+                $this->assertSame(
+                    $expectedEventCallbacks,
+                    array_column($this->emitter->getListeners($event), 'callback'),
+                    sprintf('callbacks from listeners("%s") should match the expected callbacks', $event)
+                );
             } else {
-                $this->assertSame($hasGlobalListeners, $this->emitter->hasListeners($event), sprintf('hasListeners("%s") should return %s', $event, $hasGlobalListeners ? 'TRUE' : 'FALSE'));
-                $this->assertArrayNotHasKey($event, $actualListeners, sprintf('the "%s" event key should not exist in output of listeners()', $event));
-                $this->assertSame([], $this->emitter->getListeners($event), sprintf('listeners("%s") should yield an empty array', $event));
+                $this->assertSame(
+                    $hasGlobalListeners,
+                    $this->emitter->hasListeners($event),
+                    sprintf('hasListeners("%s") should return %s', $event, $hasGlobalListeners ? 'TRUE' : 'FALSE')
+                );
+                $this->assertArrayNotHasKey(
+                    $event,
+                    $actualListeners,
+                    sprintf('the "%s" event key should not exist in output of listeners()', $event)
+                );
+                $this->assertSame(
+                    [],
+                    $this->emitter->getListeners($event),
+                    sprintf('listeners("%s") should yield an empty array', $event)
+                );
             }
         }
 
         $unexpectedCallbacks = array_keys(array_diff_key($actualListeners, $expectedCallbacks));
-        $this->assertEmpty($unexpectedCallbacks, sprintf('Unexpected event callbacks registered for events: %s', implode(', ', $unexpectedCallbacks)));
 
-        $this->assertSame($shouldHaveSomeListeners, $this->emitter->hasListeners(), sprintf('hasListeners() should return %s', $shouldHaveSomeListeners ? 'TRUE' : 'FALSE'));
+        $this->assertEmpty(
+            $unexpectedCallbacks,
+            sprintf('Unexpected event callbacks registered for events: %s', implode(', ', $unexpectedCallbacks))
+        );
+
+        $this->assertSame(
+            $shouldHaveSomeListeners,
+            $this->emitter->hasListeners(),
+            sprintf('hasListeners() should return %s', $shouldHaveSomeListeners ? 'TRUE' : 'FALSE')
+        );
     }
 
     private function assertListeners(array $expectedListeners): void
@@ -631,24 +670,62 @@ class EventEmitterTest extends TestCase
                 $shouldHaveSomeListeners = true;
 
                 foreach ($expectedEventListeners as $listener) {
-                    $this->assertTrue($this->emitter->hasListener($listener), sprintf('hasListener() with listener for event "%s" should return TRUE', $event));
+                    $this->assertTrue(
+                        $this->emitter->hasListener($listener),
+                        sprintf('hasListener() with listener for event "%s" should return TRUE', $event)
+                    );
                 }
 
-                $this->assertTrue($this->emitter->hasListeners($event), sprintf('hasListeners("%s") should return TRUE', $event));
-                $this->assertArrayHasKey($event, $actualListeners, sprintf('The "%s" event key should exist in output of listeners()', $event));
-                $this->assertSame($expectedEventListeners, $actualListeners[$event], sprintf('Listeners from listeners()["%s"] should match the expected listeners', $event));
-                $this->assertSame($expectedEventListeners, $this->emitter->getListeners($event), sprintf('Listeners from listeners("%s") should match the expected listeners', $event));
+                $this->assertTrue(
+                    $this->emitter->hasListeners($event),
+                    sprintf('hasListeners("%s") should return TRUE', $event)
+                );
+                $this->assertArrayHasKey(
+                    $event,
+                    $actualListeners,
+                    sprintf('The "%s" event key should exist in output of listeners()', $event)
+                );
+                $this->assertSame(
+                    $expectedEventListeners,
+                    $actualListeners[$event],
+                    sprintf('Listeners from listeners()["%s"] should match the expected listeners', $event)
+                );
+                $this->assertSame(
+                    $expectedEventListeners,
+                    $this->emitter->getListeners($event),
+                    sprintf('Listeners from listeners("%s") should match the expected listeners', $event)
+                );
             } else {
-                $this->assertSame($hasGlobalListeners, $this->emitter->hasListeners($event), sprintf('hasListeners("%s") should return %s', $event, $hasGlobalListeners ? 'TRUE' : 'FALSE'));
-                $this->assertArrayNotHasKey($event, $actualListeners, sprintf('The "%s" event key should not exist in output of listeners()', $event));
-                $this->assertSame([], $this->emitter->getListeners($event), sprintf('listeners("%s") should yield an empty array', $event));
+                $this->assertSame(
+                    $hasGlobalListeners,
+                    $this->emitter->hasListeners($event),
+                    sprintf('hasListeners("%s") should return %s', $event, $hasGlobalListeners ? 'TRUE' : 'FALSE')
+                );
+                $this->assertArrayNotHasKey(
+                    $event,
+                    $actualListeners,
+                    sprintf('The "%s" event key should not exist in output of listeners()', $event)
+                );
+                $this->assertSame(
+                    [],
+                    $this->emitter->getListeners($event),
+                    sprintf('listeners("%s") should yield an empty array', $event)
+                );
             }
         }
 
         $unexpectedListeners = array_keys(array_diff_key($actualListeners, $expectedListeners));
-        $this->assertEmpty($unexpectedListeners, sprintf('Unexpected event listeners registered for events: %s', implode(', ', $unexpectedListeners)));
 
-        $this->assertSame($shouldHaveSomeListeners, $this->emitter->hasListeners(), sprintf('hasListeners() should return %s', $shouldHaveSomeListeners ? 'TRUE' : 'FALSE'));
+        $this->assertEmpty(
+            $unexpectedListeners,
+            sprintf('Unexpected event listeners registered for events: %s', implode(', ', $unexpectedListeners))
+        );
+
+        $this->assertSame(
+            $shouldHaveSomeListeners,
+            $this->emitter->hasListeners(),
+            sprintf('hasListeners() should return %s', $shouldHaveSomeListeners ? 'TRUE' : 'FALSE')
+        );
     }
 }
 

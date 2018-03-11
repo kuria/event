@@ -7,11 +7,16 @@
         "php": ">=7.1"
     },
     "require-dev": {
-        "phpunit/phpunit": "^6.5"
+        "kuria/dev-meta": "^0.1.0"
     },
     "autoload": {
         "psr-4": {
             "Kuria\\Event\\": "src"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Kuria\\Event\\": "tests"
         }
     }
 }

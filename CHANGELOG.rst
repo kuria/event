@@ -1,6 +1,12 @@
 Changelog
 #########
 
+2.0.1
+*****
+
+- cs fixes, added codestyle checks
+
+
 2.0.0
 *****
 

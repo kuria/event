@@ -4,9 +4,9 @@ namespace Kuria\Event;
 
 class EventEmitter implements EventEmitterInterface
 {
-    /** @var EventListener[][] event => EventListener[] */
+    /** @var EventListener[][]|null event => EventListener[] */
     private $listeners;
-    /** @var array event => true (sorted) or int (common priority) */
+    /** @var array|null event => true (sorted) or int (common priority) */
     private $listenerSortStatus;
 
     function hasCallback(string $event, $callback): bool
@@ -35,7 +35,9 @@ class EventEmitter implements EventEmitterInterface
                 // single event
                 if (isset($this->listeners[$event])) {
                     // sort first if not done yet
-                    isset($this->listenerSortStatus[$event]) or $this->sortListeners($event);
+                    if (!isset($this->listenerSortStatus[$event])) {
+                        $this->sortListeners($event);
+                    }
 
                     return $this->listeners[$event];
                 }
@@ -44,7 +46,9 @@ class EventEmitter implements EventEmitterInterface
 
                 // ensure all listeners are sorted
                 foreach (array_keys($this->listeners) as $event) {
-                    isset($this->listenerSortStatus[$event]) or $this->sortListeners($event);
+                    if (!isset($this->listenerSortStatus[$event])) {
+                        $this->sortListeners($event);
+                    }
                 }
 
                 return $this->listeners;
@@ -61,7 +65,9 @@ class EventEmitter implements EventEmitterInterface
 
     function off(string $event, $callback): bool
     {
-        if (($index = $this->findCallback($event, $callback)) !== null) {
+        $index = $this->findCallback($event, $callback);
+
+        if ($index !== null) {
             $this->removeListenerByIndex($event, $index);
 
             return true;
@@ -93,7 +99,9 @@ class EventEmitter implements EventEmitterInterface
 
     function removeListener(EventListener $listener): bool
     {
-        if (($index = $this->findListener($listener)) !== null) {
+        $index = $this->findListener($listener);
+
+        if ($index !== null) {
             $this->removeListenerByIndex($listener->event, $index);
 
             return true;
@@ -123,7 +131,9 @@ class EventEmitter implements EventEmitterInterface
         foreach ([static::ANY_EVENT, $event] as $pass => $current) {
             if (isset($this->listeners[$current])) {
                 // sort first if not done yet
-                isset($this->listenerSortStatus[$current]) or $this->sortListeners($current);
+                if (!isset($this->listenerSortStatus[$current])) {
+                    $this->sortListeners($current);
+                }
 
                 // iterate
                 foreach ($this->listeners[$current] as $index => $listener) {
@@ -177,6 +187,7 @@ class EventEmitter implements EventEmitterInterface
 
     private function sortListeners(string $event): void
     {
+        /** @var mixed $sortStatus */
         $sortStatus = null;
 
         usort($this->listeners[$event], function (EventListener $a, EventListener $b) use (&$sortStatus) {
