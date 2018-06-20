@@ -19,15 +19,15 @@ class ObservableTest extends TestCase
 
         $eventEmitterSpy->expects($this->at(0))
             ->method('on')
-            ->with($this->identicalTo('foo'), $this->identicalTo('some_callback'), $this->identicalTo(0));
+            ->with('foo', 'some_callback', 0);
 
         $eventEmitterSpy->expects($this->at(1))
             ->method('on')
-            ->with($this->identicalTo('bar'), $this->identicalTo('another_callback'), $this->identicalTo(10));
+            ->with('bar', 'another_callback', 10);
 
         $eventEmitterSpy->expects($this->once())
             ->method('off')
-            ->with($this->identicalTo('baz'), $this->identicalTo('yet_another_callback'));
+            ->with('baz', 'yet_another_callback');
 
         $eventEmitterSpy->expects($this->once())
             ->method('addListener')
@@ -39,7 +39,7 @@ class ObservableTest extends TestCase
 
         $eventEmitterSpy->expects($this->once())
             ->method('emit')
-            ->with($this->identicalTo('some_event'), $this->identicalTo(1), $this->identicalTo(2), $this->identicalTo(3));
+            ->with('some_event', 1, 2, 3);
 
         $observable->on('foo', 'some_callback');
         $observable->on('bar', 'another_callback', 10);
