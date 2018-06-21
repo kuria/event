@@ -23,7 +23,7 @@ class EventSubscriberTest extends TestCase
         ]);
     }
 
-    function testSubscribe()
+    function testShouldSubscribe()
     {
         $onBarCalled = false;
         $onBarOtherCalled = false;
@@ -80,7 +80,7 @@ class EventSubscriberTest extends TestCase
         $this->emitter->emit('baz');
     }
 
-    function testUnsubscribe()
+    function testShouldUnsubscribe()
     {
         $this->subscriber
             ->expects($this->never())

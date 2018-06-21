@@ -16,7 +16,7 @@ class EventEmitterTest extends TestCase
         $this->emitter = new EventEmitter();
     }
 
-    function testHasListeners()
+    function testShouldCheckIfListenersExist()
     {
         // check without any listeners
         $this->assertFalse($this->emitter->hasListeners());
@@ -37,7 +37,7 @@ class EventEmitterTest extends TestCase
         $this->assertTrue($this->emitter->hasListeners('bar'));
     }
 
-    function testListeners()
+    function testShouldGetListeners()
     {
         $this->assertSame([], $this->emitter->getListeners());
         $this->assertSame([], $this->emitter->getListeners('nonexistent'));
@@ -71,7 +71,7 @@ class EventEmitterTest extends TestCase
         );
     }
 
-    function testOn()
+    function testShouldRegisterCallback()
     {
         $callbackA = $this->createTestCallback('a');
         $callbackB = $this->createTestCallback('b');
@@ -86,7 +86,7 @@ class EventEmitterTest extends TestCase
         ]);
     }
 
-    function testOff()
+    function testShouldUnregisterCallback()
     {
         $callStatus = [
             'a' => false,
@@ -185,7 +185,7 @@ class EventEmitterTest extends TestCase
         $this->assertSame(['a' => false, 'b' => false, 'global_a' => false, 'global_b' => false], $callStatus);
     }
 
-    function testAddListener()
+    function testShouldAddListener()
     {
         $fooListener = $this->createTestListener('foo');
         $barListenerA = $this->createTestListener('bar', 'b');
@@ -202,7 +202,7 @@ class EventEmitterTest extends TestCase
         ]);
     }
 
-    function testRemoveListener()
+    function testShouldRemoveListener()
     {
         $expectedCallStatus = [
             'foo_a' => false,
@@ -329,7 +329,7 @@ class EventEmitterTest extends TestCase
         $this->assertSame($expectedCallStatus, $actualCallStatus);
     }
 
-    function testClearingListeners()
+    function testShouldClearListeners()
     {
         $callbackA = $this->createTestCallback('a');
         $callbackB = $this->createTestCallback('b');
@@ -366,7 +366,7 @@ class EventEmitterTest extends TestCase
         ]);
     }
 
-    function testEmit()
+    function testShouldEmit()
     {
         $callbackCallCounters = [
             'a' => 0,
@@ -426,7 +426,7 @@ class EventEmitterTest extends TestCase
         $this->assertSame(3, $callbackCallCounters['global_b']);
     }
 
-    function testEmitPriority()
+    function testEmitShouldInvokeCallbacksAccordingToPriority()
     {
         /** @var bool[] $callStatus */
         $callStatus = [
@@ -508,7 +508,7 @@ class EventEmitterTest extends TestCase
         );
     }
 
-    function testStoppingPropagation()
+    function testShouldStopPropagation()
     {
         $callbackACalled = false;
         $callbackBCalled = false;
@@ -532,7 +532,7 @@ class EventEmitterTest extends TestCase
         $this->assertFalse($callbackBCalled);
     }
 
-    function testStoppingPropagationGlobal()
+    function testShouldStopPropagationInGlobalListener()
     {
         $callStatus = [
             'a' => false,

@@ -7,7 +7,7 @@ use PHPUnit\Framework\MockObject\MockObject;
 
 class ObservableTest extends TestCase
 {
-    function testObservableInterface()
+    function testShouldPerformObservableOperations()
     {
         /** @var EventEmitter|MockObject $eventEmitterSpy */
         $eventEmitterSpy = $this->createTestProxy(EventEmitter::class);
@@ -49,7 +49,7 @@ class ObservableTest extends TestCase
         $observable->emit('some_event', 1, 2, 3);
     }
 
-    function testLazyEmit()
+    function testEmitShouldNotInitializeEventEmitter()
     {
         /** @var Observable|MockObject $observable */
         $observable = $this->createPartialMock(Observable::class, ['createEventEmitter']);
@@ -59,7 +59,7 @@ class ObservableTest extends TestCase
         $observable->emit('foo');
     }
 
-    function testEventEmitterPropInterface()
+    function testShouldGetEventEmitter()
     {
         $observable = new class extends Observable {};
 

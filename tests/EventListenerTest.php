@@ -9,7 +9,7 @@ class EventListenerTest extends TestCase
     /**
      * @dataProvider provideEventListeners
      */
-    function testCreatingEventListener(
+    function testShouldCreateEventListener(
         EventListener $listener,
         string $expectedEvent,
         $expectedCallback,
@@ -23,6 +23,7 @@ class EventListenerTest extends TestCase
     function provideEventListeners(): array
     {
         return [
+            // listener, epxectedEvent, expectedCallback, expectedPriority
             'default priority' => [new EventListener('foo', 'callback_a'), 'foo', 'callback_a', 0],
             'specified priority' => [new EventListener('bar', 'callback_b', 123), 'bar', 'callback_b', 123],
         ];
