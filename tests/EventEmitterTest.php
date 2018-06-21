@@ -370,8 +370,10 @@ class EventEmitterTest extends TestCase
     {
         $callbackCallCounters = [
             'a' => 0,
+            'a2' => 0,
             'b' => 0,
             'global_a' => 0,
+            'global_a2' => 0,
             'global_b' => 0,
         ];
 
@@ -382,6 +384,13 @@ class EventEmitterTest extends TestCase
             ++$callbackCallCounters['a'];
         });
 
+        $callbackARemoved = $this->createTestCallback('a2', function ($arg1, $arg2) use (&$callbackCallCounters) {
+            $this->assertSame('hello', $arg1);
+            $this->assertSame(123, $arg2);
+
+            ++$callbackCallCounters['a2'];
+        });
+
         $callbackB = $this->createTestCallback('b', function ($arg1, $arg2) use (&$callbackCallCounters) {
             $this->assertSame('hello', $arg1);
             $this->assertSame(123, $arg2);
@@ -390,15 +399,23 @@ class EventEmitterTest extends TestCase
         });
 
         $globalCallbackA = $this->createTestCallback('global_a', function ($event, $arg1, $arg2) use (&$callbackCallCounters) {
-            $this->assertTrue(in_array($event, ['foo', 'bar'], true));
+            $this->assertContains($event, ['foo', 'bar']);
             $this->assertSame('hello', $arg1);
             $this->assertSame(123, $arg2);
 
             ++$callbackCallCounters['global_a'];
         });
 
+        $globalCallbackARemoved = $this->createTestCallback('global_a2', function ($event, $arg1, $arg2) use (&$callbackCallCounters) {
+            $this->assertContains($event, ['foo', 'bar']);
+            $this->assertSame('hello', $arg1);
+            $this->assertSame(123, $arg2);
+
+            ++$callbackCallCounters['global_a2'];
+        });
+
         $globalCallbackB = $this->createTestCallback('global_b', function ($event, $arg1, $arg2) use (&$callbackCallCounters) {
-            $this->assertTrue(in_array($event, ['foo', 'bar'], true));
+            $this->assertContains($event, ['foo', 'bar']);
             $this->assertSame('hello', $arg1);
             $this->assertSame(123, $arg2);
 
@@ -406,8 +423,12 @@ class EventEmitterTest extends TestCase
         });
 
         $this->emitter->on('foo', $callbackA);
+        $this->emitter->on('foo', $callbackARemoved, 123);
+        $this->emitter->off('foo', $callbackARemoved);
         $this->emitter->on('foo', $callbackB);
         $this->emitter->on(EventEmitterInterface::ANY_EVENT, $globalCallbackA);
+        $this->emitter->on(EventEmitterInterface::ANY_EVENT, $globalCallbackARemoved, 456);
+        $this->emitter->off(EventEmitterInterface::ANY_EVENT, $globalCallbackARemoved);
         $this->emitter->on(EventEmitterInterface::ANY_EVENT, $globalCallbackB);
 
         // emit the event twice

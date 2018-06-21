@@ -6,6 +6,7 @@ class EventEmitter implements EventEmitterInterface
 {
     /** @var EventListener[][]|null event => EventListener[] */
     private $listeners;
+
     /** @var array|null event => true (sorted) or int (common priority) */
     private $listenerSortStatus;
 

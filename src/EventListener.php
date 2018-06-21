@@ -9,8 +9,10 @@ class EventListener
 {
     /** @var string read-only */
     public $event;
+
     /** @var callable read-only */
     public $callback;
+
     /** @var int read-only */
     public $priority;
 

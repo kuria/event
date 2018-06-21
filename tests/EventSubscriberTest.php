@@ -9,6 +9,7 @@ class EventSubscriberTest extends TestCase
 {
     /** @var EventEmitter */
     private $emitter;
+
     /** @var TestEventSubscriber|MockObject */
     private $subscriber;
 
