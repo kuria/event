@@ -2,9 +2,9 @@
 
 namespace Kuria\Event;
 
-use PHPUnit\Framework\TestCase;
+use Kuria\DevMeta\Test;
 
-class EventListenerTest extends TestCase
+class EventListenerTest extends Test
 {
     /**
      * @dataProvider provideEventListeners

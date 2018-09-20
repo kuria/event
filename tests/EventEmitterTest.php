@@ -2,9 +2,9 @@
 
 namespace Kuria\Event;
 
-use PHPUnit\Framework\TestCase;
+use Kuria\DevMeta\Test;
 
-class EventEmitterTest extends TestCase
+class EventEmitterTest extends Test
 {
     /** @var EventEmitterInterface */
     private $emitter;

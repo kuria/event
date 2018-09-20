@@ -3,8 +3,8 @@ Event
 
 Event library that implements variations of the mediator and observer patterns.
 
-.. image:: https://travis-ci.org/kuria/event.svg?branch=master
-   :target: https://travis-ci.org/kuria/event
+.. image:: https://travis-ci.com/kuria/event.svg?branch=master
+   :target: https://travis-ci.com/kuria/event
 
 .. contents::
    :depth: 2

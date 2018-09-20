@@ -2,10 +2,10 @@
 
 namespace Kuria\Event;
 
-use PHPUnit\Framework\TestCase;
+use Kuria\DevMeta\Test;
 use PHPUnit\Framework\MockObject\MockObject;
 
-class ObservableTest extends TestCase
+class ObservableTest extends Test
 {
     function testShouldPerformObservableOperations()
     {
