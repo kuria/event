@@ -20,7 +20,7 @@ class EventListenerTest extends Test
         $this->assertSame($listener->priority, $expectedPriority);
     }
 
-    function provideEventListeners(): array
+    function provideEventListeners()
     {
         return [
             // listener, epxectedEvent, expectedCallback, expectedPriority
